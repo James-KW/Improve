@@ -1,7 +1,16 @@
 {
   "name": "gemini-chat-app",
   "version": "1.0.0",
+  "description": "Enhanced Gemini AI Chat with Image Support",
+  "main": "chat.js",
+  "scripts": {
+    "start": "node chat.js",
+    "dev": "node chat.js"
+  },
   "dependencies": {
     "@google/generative-ai": "^0.21.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
   }
 }
