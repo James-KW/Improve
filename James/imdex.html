@@ -1,7 +1,7 @@
 <!DOCTYPE html> 
 <html> 
 <head> 
-    <title>James AI Chat - Real-time Typing</title>
+    <title>James AI Chat - Image Support</title>
     
     <!-- PWA Support -->
     <link rel="manifest" href="/manifest.json">
@@ -107,6 +107,7 @@
         border-top: 1px solid #e0e0e0;
         display: flex;
         gap: 10px;
+        align-items: flex-end;
     }
     #messageInput {
         flex: 1;
@@ -116,6 +117,8 @@
         font-size: 16px;
         outline: none;
         transition: border-color 0.3s;
+        min-height: 50px;
+        resize: vertical;
     }
     #messageInput:focus {
         border-color: #007bff;
@@ -129,6 +132,7 @@
         cursor: pointer;
         font-size: 16px;
         transition: background 0.3s;
+        height: 50px;
     }
     #sendButton:hover {
         background: #0056b3;
@@ -155,17 +159,99 @@
         0%, 100% { opacity: 1; }
         50% { opacity: 0; }
     }
+    
+    /* Image Upload Styles */
+    .upload-container {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+        flex-wrap: wrap;
+    }
+    .upload-btn {
+        background: #28a745;
+        color: white;
+        border: none;
+        padding: 8px 15px;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: background 0.3s;
+    }
+    .upload-btn:hover {
+        background: #218838;
+    }
+    #fileInput {
+        display: none;
+    }
+    .image-preview {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+        margin-top: 10px;
+    }
+    .preview-image {
+        position: relative;
+        width: 80px;
+        height: 80px;
+        border-radius: 8px;
+        overflow: hidden;
+        border: 2px solid #007bff;
+    }
+    .preview-image img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+    }
+    .remove-image {
+        position: absolute;
+        top: -5px;
+        right: -5px;
+        background: #dc3545;
+        color: white;
+        border: none;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        cursor: pointer;
+        font-size: 12px;
+    }
+    .chat-image {
+        max-width: 300px;
+        max-height: 300px;
+        border-radius: 8px;
+        margin: 5px 0;
+        border: 1px solid #e0e0e0;
+    }
+    .mode-selector {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+    }
+    .mode-btn {
+        padding: 8px 15px;
+        border: 2px solid #007bff;
+        background: white;
+        color: #007bff;
+        border-radius: 20px;
+        cursor: pointer;
+        font-size: 14px;
+        transition: all 0.3s;
+    }
+    .mode-btn.active {
+        background: #007bff;
+        color: white;
+    }
     </style> 
 </head> 
 <body> 
     <div class="container">
         <div class="header">
-            <h1>🚀 James AI Chat - Real-time Typing</h1>
+            <h1>🚀 James AI - Image & Text Assistant</h1>
         </div>
         <div class="chat-container" id="chatContainer">
             <div class="message ai-message">
                 <div class="message-bubble">
-                    Hello! I'm James AI. I'll type my responses line by line so you can follow along easily!
+                    Hello! I'm James AI. I can analyze images, generate images from text, and chat with you! Upload an image or type your message.
                 </div>
             </div>
         </div>
@@ -173,7 +259,21 @@
             James AI is thinking... <span class="typing-cursor"></span>
         </div>
         <div class="input-container">
-            <input type="text" id="messageInput" placeholder="Type your message here..." autocomplete="off">
+            <div style="flex: 1;">
+                <div class="mode-selector">
+                    <button class="mode-btn active" data-mode="chat" onclick="setMode('chat')">💬 Chat</button>
+                    <button class="mode-btn" data-mode="analyze" onclick="setMode('analyze')">🔍 Analyze Image</button>
+                    <button class="mode-btn" data-mode="generate" onclick="setMode('generate')">🎨 Generate Image</button>
+                </div>
+                <div class="upload-container" id="uploadContainer">
+                    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
+                        📁 Upload Image
+                    </button>
+                    <input type="file" id="fileInput" accept="image/*" multiple onchange="handleImageUpload(event)">
+                    <div class="image-preview" id="imagePreview"></div>
+                </div>
+                <textarea id="messageInput" placeholder="Type your message or image generation prompt..." autocomplete="off" rows="3"></textarea>
+            </div>
             <button id="sendButton" onclick="sendMessage()">Send</button>
         </div>
     </div>
@@ -183,6 +283,73 @@
     const messageInput = document.getElementById('messageInput');
     const sendButton = document.getElementById('sendButton');
     const typingIndicator = document.getElementById('typingIndicator');
+    const imagePreview = document.getElementById('imagePreview');
+    const fileInput = document.getElementById('fileInput');
+    const uploadContainer = document.getElementById('uploadContainer');
+
+    let uploadedImages = [];
+    let currentMode = 'chat';
+
+    function setMode(mode) {
+        currentMode = mode;
+        // Update active button
+        document.querySelectorAll('.mode-btn').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
+        
+        // Update UI based on mode
+        if (mode === 'generate') {
+            messageInput.placeholder = "Describe the image you want to generate...";
+            uploadContainer.style.display = 'none';
+            clearImages();
+        } else if (mode === 'analyze') {
+            messageInput.placeholder = "Ask about the uploaded image or just describe it...";
+            uploadContainer.style.display = 'block';
+        } else {
+            messageInput.placeholder = "Type your message here...";
+            uploadContainer.style.display = 'block';
+        }
+    }
+
+    function handleImageUpload(event) {
+        const files = event.target.files;
+        for (let file of files) {
+            if (file.type.startsWith('image/')) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const imageData = e.target.result;
+                    uploadedImages.push(imageData);
+                    updateImagePreview();
+                };
+                reader.readAsDataURL(file);
+            }
+        }
+        fileInput.value = '';
+    }
+
+    function updateImagePreview() {
+        imagePreview.innerHTML = '';
+        uploadedImages.forEach((imageData, index) => {
+            const previewDiv = document.createElement('div');
+            previewDiv.className = 'preview-image';
+            previewDiv.innerHTML = `
+                <img src="${imageData}" alt="Preview">
+                <button class="remove-image" onclick="removeImage(${index})">×</button>
+            `;
+            imagePreview.appendChild(previewDiv);
+        });
+    }
+
+    function removeImage(index) {
+        uploadedImages.splice(index, 1);
+        updateImagePreview();
+    }
+
+    function clearImages() {
+        uploadedImages = [];
+        updateImagePreview();
+    }
 
     // Type text character by character
     function typeText(element, text, speed = 20) {
@@ -191,10 +358,8 @@
             element.innerHTML = '';
             function type() {
                 if (index < text.length) {
-                    // Add next character
                     element.innerHTML += text.charAt(index);
                     index++;
-                    // Scroll to bottom
                     chatContainer.scrollTop = chatContainer.scrollHeight;
                     setTimeout(type, speed);
                 } else {
@@ -207,7 +372,6 @@
 
     // Auto-detect code in response and format it
     function formatMessage(text) {
-        // Simple code detection (you can enhance this)
         if (text.includes('```')) {
             return text.replace(/```(\w+)?\n([\s\S]*?)```/g, function(match, lang, code) {
                 return `\n[CODE_BLOCK]${code.trim()}[/CODE_BLOCK]\n`;
@@ -229,7 +393,7 @@
     }
 
     // Add message to chat with typing effect
-    function addMessage(text, isUser) {
+    function addMessage(text, isUser, images = []) {
         return new Promise(async (resolve) => {
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
@@ -239,46 +403,67 @@
             chatContainer.appendChild(messageDiv);
 
             if (isUser) {
-                // For user messages, show immediately
-                bubbleDiv.textContent = text;
+                // For user messages, show immediately with images
+                if (images.length > 0) {
+                    images.forEach(imgData => {
+                        const img = document.createElement('img');
+                        img.src = imgData;
+                        img.className = 'chat-image';
+                        bubbleDiv.appendChild(img);
+                    });
+                }
+                if (text) {
+                    const textDiv = document.createElement('div');
+                    textDiv.textContent = text;
+                    textDiv.style.marginTop = images.length > 0 ? '10px' : '0';
+                    bubbleDiv.appendChild(textDiv);
+                }
                 chatContainer.scrollTop = chatContainer.scrollHeight;
                 resolve();
             } else {
                 // For AI messages, type it out
-                const formattedText = formatMessage(text);
-                if (formattedText.includes('[CODE_BLOCK]')) {
-                    // Handle text with code blocks
-                    const parts = formattedText.split(/(\[CODE_BLOCK\][\s\S]*?\[\/CODE_BLOCK\])/);
-                    for (const part of parts) {
-                        if (part.startsWith('[CODE_BLOCK]') && part.endsWith('[/CODE_BLOCK]')) {
-                            // This is a code block - show immediately
-                            const codeContent = part.replace('[CODE_BLOCK]', '').replace('[/CODE_BLOCK]', '');
-                            const codeBlock = document.createElement('div');
-                            codeBlock.className = 'code-block';
-                            codeBlock.innerHTML = `
-                                <button class="copy-btn" onclick="copyCode(this)">Copy</button>
-                                <pre><code>${codeContent}</code></pre>
-                            `;
-                            bubbleDiv.appendChild(codeBlock);
-                        } else if (part.trim()) {
-                            // This is regular text - type it out
-                            const textElement = document.createElement('div');
-                            bubbleDiv.appendChild(textElement);
-                            await typeText(textElement, part, 15);
-                        }
-                    }
+                if (text.startsWith('IMAGE_GENERATED:')) {
+                    // Handle generated image
+                    const imageData = text.replace('IMAGE_GENERATED:', '');
+                    const img = document.createElement('img');
+                    img.src = imageData;
+                    img.className = 'chat-image';
+                    bubbleDiv.appendChild(img);
+                    chatContainer.scrollTop = chatContainer.scrollHeight;
+                    resolve();
                 } else {
-                    // Regular text without code blocks
-                    await typeText(bubbleDiv, formattedText, 15);
+                    const formattedText = formatMessage(text);
+                    if (formattedText.includes('[CODE_BLOCK]')) {
+                        const parts = formattedText.split(/(\[CODE_BLOCK\][\s\S]*?\[\/CODE_BLOCK\])/);
+                        for (const part of parts) {
+                            if (part.startsWith('[CODE_BLOCK]') && part.endsWith('[/CODE_BLOCK]')) {
+                                const codeContent = part.replace('[CODE_BLOCK]', '').replace('[/CODE_BLOCK]', '');
+                                const codeBlock = document.createElement('div');
+                                codeBlock.className = 'code-block';
+                                codeBlock.innerHTML = `
+                                    <button class="copy-btn" onclick="copyCode(this)">Copy</button>
+                                    <pre><code>${codeContent}</code></pre>
+                                `;
+                                bubbleDiv.appendChild(codeBlock);
+                            } else if (part.trim()) {
+                                const textElement = document.createElement('div');
+                                bubbleDiv.appendChild(textElement);
+                                await typeText(textElement, part, 15);
+                            }
+                        }
+                    } else {
+                        await typeText(bubbleDiv, formattedText, 15);
+                    }
+                    resolve();
                 }
-                resolve();
             }
         });
     }
 
-    // Handle Enter key
+    // Handle Enter key (but allow Shift+Enter for new line)
     messageInput.addEventListener('keypress', function(event) {
-        if (event.key === 'Enter') {
+        if (event.key === 'Enter' && !event.shiftKey) {
+            event.preventDefault();
             sendMessage();
         }
     });
@@ -286,27 +471,36 @@
     // Send message function
     async function sendMessage() {
         const message = messageInput.value.trim();
-        if (!message) return;
+        const images = [...uploadedImages];
+        
+        if (!message && images.length === 0) return;
 
         // Disable input while sending
         messageInput.disabled = true;
         sendButton.disabled = true;
 
         // Add user message
-        await addMessage(message, true);
+        await addMessage(message, true, images);
         messageInput.value = '';
+        clearImages();
 
         // Show typing indicator
         typingIndicator.style.display = 'block';
         chatContainer.scrollTop = chatContainer.scrollHeight;
 
         try {
+            const payload = {
+                message: message,
+                images: images,
+                mode: currentMode
+            };
+
             const response = await fetch('/api/chat', {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json'
                 },
-                body: JSON.stringify({ message: message })
+                body: JSON.stringify(payload)
             });
             const data = await response.json();
 
@@ -315,8 +509,8 @@
 
             if (data.text) {
                 await addMessage(data.text, false);
-            } else {
-                await addMessage('Error: ' + (data.error || 'Unknown error'), false);
+            } else if (data.error) {
+                await addMessage('Error: ' + data.error, false);
             }
         } catch (error) {
             typingIndicator.style.display = 'none';
@@ -329,7 +523,7 @@
         messageInput.focus();
     }
 
-    // Focus input on load
+    // Initialize
     messageInput.focus();
     </script>
 </body>
