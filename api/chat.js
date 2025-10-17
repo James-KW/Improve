@@ -9,6 +9,47 @@ function base64ToGenerativePart(base64String, mimeType) {
     };
 }
 
+// Groq AI Image Generation - 100% Free
+async function generateWithGroq(prompt) {
+    try {
+        const response = await fetch('https://api.groq.com/openai/v1/images/generations', {
+            method: 'POST',
+            headers: {
+                'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                model: "dall-e-3",
+                prompt: prompt,
+                n: 1,
+                size: "1024x1024"
+            })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Groq API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        
+        // Groq returns URL of generated image
+        if (data.data && data.data[0] && data.data[0].url) {
+            // Convert URL to base64 for frontend
+            const imageResponse = await fetch(data.data[0].url);
+            const imageBlob = await imageResponse.blob();
+            const arrayBuffer = await imageBlob.arrayBuffer();
+            const buffer = Buffer.from(arrayBuffer);
+            return `data:image/png;base64,${buffer.toString('base64')}`;
+        } else {
+            throw new Error('No image URL in response');
+        }
+        
+    } catch (error) {
+        console.error("Groq Generation Error:", error);
+        throw error;
+    }
+}
+
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -20,63 +61,97 @@ module.exports = async (req, res) => {
     try {
         const { message, images, mode } = req.body;
         
-        if (!message || !images || images.length === 0) {
-            return res.status(400).json({ error: 'Both message and image are required for editing' });
-        }
+        console.log("Request:", { mode, message: message?.substring(0, 50), imageCount: images?.length });
 
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        
-        const modelsToTry = [
-            "gemini-2.0-flash-exp",
-            "gemini-2.5-flash-exp", 
-            "gemini-2.0-flash",
-            "gemini-1.5-flash"
-        ];
-
-        let lastError;
-
-        for (const modelName of modelsToTry) {
+        // Image Generation with Groq AI
+        if (mode === 'generate' && message) {
             try {
-                const model = genAI.getGenerativeModel({ model: modelName });
+                console.log("Starting Groq AI image generation...");
                 
-                const imageParts = images.map(imgData => {
-                    const mimeType = imgData.split(';')[0].split(':')[1];
-                    return base64ToGenerativePart(imgData, mimeType);
+                // If user uploaded image + text, create combined prompt
+                let finalPrompt = message;
+                if (images && images.length > 0) {
+                    // Use Gemini to analyze image and enhance prompt
+                    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+                    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+                    
+                    const imageParts = images.map(imgData => {
+                        const mimeType = imgData.split(';')[0].split(':')[1];
+                        return base64ToGenerativePart(imgData, mimeType);
+                    });
+
+                    const analysisPrompt = `Describe this image in detail, then create a new image based on it with this modification: ${message}`;
+                    const result = await model.generateContent([analysisPrompt, ...imageParts]);
+                    const analysis = result.response.text();
+                    
+                    finalPrompt = `Create an image based on this description: ${analysis}. Apply this modification: ${message}`;
+                }
+
+                const generatedImage = await generateWithGroq(finalPrompt);
+                
+                return res.status(200).json({
+                    text: `IMAGE_GENERATED:${generatedImage}`,
+                    mode: 'generate',
+                    success: true
                 });
-
-                // Enhanced prompt for image editing instructions
-                const prompt = `
-                IMAGE EDITING REQUEST: ${message}
                 
-                Please analyze the uploaded image and provide detailed, step-by-step instructions on how to edit/modify the image according to the request. Include:
-                
-                1. WHAT needs to be changed specifically
-                2. HOW to make the changes (technical steps)
-                3. TOOLS or software that could be used
-                4. Expected RESULT after editing
-                
-                Be very specific and practical in your instructions.
-                `;
-
-                const result = await model.generateContent([prompt, ...imageParts]);
-                const response = await result.response;
-                
-                return res.status(200).json({ 
-                    text: `📝 IMAGE EDITING INSTRUCTIONS:\n\n${response.text()}`,
-                    modelUsed: modelName,
-                    mode: 'edit'
-                });
-
             } catch (error) {
-                console.log(`Model ${modelName} failed:`, error.message);
-                lastError = error;
-                continue;
+                console.error("Groq generation failed:", error);
+                return res.status(200).json({
+                    text: `❌ Image generation failed: ${error.message}. Please try again.`,
+                    mode: 'generate',
+                    success: false
+                });
             }
         }
         
-        throw lastError;
+        // Image Analysis with Gemini
+        else if (images && images.length > 0) {
+            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+            const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+
+            const imageParts = images.map(imgData => {
+                const mimeType = imgData.split(';')[0].split(':')[1];
+                return base64ToGenerativePart(imgData, mimeType);
+            });
+
+            const prompt = message 
+                ? `Analyze this image and: ${message}`
+                : "Describe this image in detail.";
+
+            const result = await model.generateContent([prompt, ...imageParts]);
+            const response = await result.response;
+            
+            return res.status(200).json({ 
+                text: response.text(),
+                mode: 'analyze',
+                success: true
+            });
+        }
+        
+        // Text Chat with Gemini
+        else if (message) {
+            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+            const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
+            
+            const result = await model.generateContent(message);
+            const response = await result.response;
+            
+            return res.status(200).json({ 
+                text: response.text(),
+                mode: 'chat',
+                success: true
+            });
+        }
+        
+        else {
+            return res.status(400).json({ 
+                error: 'Message or image is required'
+            });
+        }
 
     } catch (error) {
+        console.error("API Error:", error);
         return res.status(500).json({ 
             error: error.message
         });
