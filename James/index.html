@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-    <title>James AI Chat - Image & Video Support</title>
+    <title>James AI Chat - Image Support</title>
     <!-- PWA Support -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#667eea">
@@ -251,12 +251,12 @@
 <body>
     <div class="container">
         <div class="header">
-            <h1>🚀 James AI - Image & Video Assistant</h1>
+            <h1>🚀 James AI - Image & Text Assistant</h1>
         </div>
         <div class="chat-container" id="chatContainer">
             <div class="message ai-message">
                 <div class="message-bubble">
-                    Hello! I'm James AI. I can analyze images, generate images & videos from text, and chat with you! Upload an image or type your message.
+                    Hello! I'm James AI. I can analyze images, generate images from text, and chat with you! Upload an image or type your message.
                 </div>
             </div>
         </div>
@@ -268,8 +268,8 @@
                 <div class="mode-selector">
                     <button class="mode-btn active" data-mode="chat" onclick="setMode('chat')">💬 Chat</button>
                     <button class="mode-btn" data-mode="analyze" onclick="setMode('analyze')">🔍 Analyze Image</button>
-                    <button class="mode-btn" data-mode="generate" onclick="setMode('generate', 'image')" data-media="image">🎨 Generate Image</button>
-                    <button class="mode-btn" data-mode="generate" onclick="setMode('generate', 'video')" data-media="video">🎥 Generate Video</button>
+                    <button class="mode-btn" data-mode="generate" onclick="setMode('generate', 'image')">🎨 Generate Image</button>
+                    <button class="mode-btn" data-mode="generate" onclick="setMode('generate', 'video')">🎥 Generate Video</button>
                 </div>
                 <div class="upload-container" id="uploadContainer">
                     <button class="upload-btn" onclick="document.getElementById('fileInput').click()">
@@ -306,12 +306,8 @@
                 btn.classList.remove('active');
             });
             
-            // Find and activate the correct button
-            const activeButton = document.querySelector(`[data-mode="${mode}"][data-media="${mediaType}"]`) || 
-                               document.querySelector(`[data-mode="${mode}"]:not([data-media])`);
-            if (activeButton) {
-                activeButton.classList.add('active');
-            }
+            // Activate the clicked button
+            event.target.classList.add('active');
             
             // Update UI based on mode
             if (mode === 'generate') {
@@ -320,8 +316,7 @@
                 } else {
                     messageInput.placeholder = "Describe the image you want to generate...";
                 }
-                uploadContainer.style.display = 'none';
-                clearImages();
+                uploadContainer.style.display = 'block';
             } else if (mode === 'analyze') {
                 messageInput.placeholder = "Ask about the uploaded image or just describe it...";
                 uploadContainer.style.display = 'block';
