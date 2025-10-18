@@ -9,7 +9,7 @@ function base64ToGenerativePart(base64String, mimeType) {
   };
 }
 
-// FREE Image Generation - Stable Diffusion
+// Hugging Face - Stable Diffusion (FOREVER FREE)
 async function generateWithStableDiffusion(prompt) {
   try {
     const response = await fetch(
@@ -46,7 +46,44 @@ async function generateWithStableDiffusion(prompt) {
   }
 }
 
-// FREE Video Generation - Stable Video Diffusion
+// Hugging Face - Flux.1 (Better Quality - FREE)
+async function generateWithFlux(prompt) {
+  try {
+    const response = await fetch(
+      "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          inputs: prompt,
+          parameters: {
+            width: 512,
+            height: 512
+          }
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`FLUX.1 error: ${errorData.error || response.status}`);
+    }
+
+    const imageBlob = await response.blob();
+    const arrayBuffer = await imageBlob.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    return `data:image/png;base64,${buffer.toString('base64')}`;
+    
+  } catch (error) {
+    console.error("FLUX.1 Error:", error);
+    throw error;
+  }
+}
+
+// FREE Video Generation
 async function generateWithStableVideo(prompt) {
   try {
     const response = await fetch(
@@ -92,29 +129,43 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { message, images, mode, mediaType = 'image' } = req.body;
+    const { message, images, mode, mediaType = 'image', imageModel = 'flux' } = req.body;
     
-    console.log("Request:", { mode, mediaType, message: message?.substring(0, 50) });
+    console.log("Request:", { mode, mediaType, imageModel, message: message?.substring(0, 50) });
 
-    // FREE Image Generation
+    // Image Generation with Model Selection
     if (mode === 'generate' && message && mediaType === 'image') {
       try {
-        console.log("Starting FREE Image Generation...");
+        console.log(`Starting ${imageModel} image generation...`);
         
-        const generatedImage = await generateWithStableDiffusion(message);
+        let generatedImage;
+        
+        if (imageModel === 'flux') {
+          // Try FLUX.1 first (better quality)
+          try {
+            generatedImage = await generateWithFlux(message);
+          } catch (fluxError) {
+            console.log("FLUX.1 failed, trying Stable Diffusion...");
+            generatedImage = await generateWithStableDiffusion(message);
+          }
+        } else {
+          // Direct Stable Diffusion
+          generatedImage = await generateWithStableDiffusion(message);
+        }
         
         return res.status(200).json({ 
           text: `IMAGE_GENERATED:${generatedImage}`,
-          message: "Image generated successfully! (FREE Version)",
+          message: `Image generated with ${imageModel.toUpperCase()}! (FREE)`,
           mode: 'generate', 
           mediaType: 'image',
+          modelUsed: imageModel,
           success: true 
         });
 
       } catch (error) {
-        console.error("FREE Image generation failed:", error);
+        console.error("Image generation failed:", error);
         return res.status(200).json({ 
-          text: `❌ FREE Image generation failed: ${error.message}. Try a different prompt.`,
+          text: `❌ Image generation failed: ${error.message}. Try again later.`,
           mode: 'generate', 
           success: false 
         });
@@ -130,7 +181,7 @@ module.exports = async (req, res) => {
         
         return res.status(200).json({ 
           text: `VIDEO_GENERATED:${videoResult}`,
-          message: "Video generated successfully! (FREE Version)", 
+          message: "Video generated successfully! (FREE)", 
           mode: 'generate', 
           mediaType: 'video',
           success: true 
@@ -139,7 +190,7 @@ module.exports = async (req, res) => {
       } catch (error) {
         console.error("FREE Video generation failed:", error);
         return res.status(200).json({ 
-          text: `❌ FREE Video generation failed: ${error.message}. Try again later.`,
+          text: `❌ Video generation failed: ${error.message}. Daily limit may be reached - try tomorrow!`,
           mode: 'generate', 
           success: false 
         });
