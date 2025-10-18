@@ -9,32 +9,76 @@ function base64ToGenerativePart(base64String, mimeType) {
   };
 }
 
-// Gemini Nano Banana Image Generation
-async function generateWithNanoBanana(prompt) {
+// FREE Image Generation - Stable Diffusion
+async function generateWithStableDiffusion(prompt) {
   try {
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "nano-banana" });
-    
-    console.log("Generating image with Nano Banana...");
-    const result = await model.generateContent(prompt);
-    const response = await result.response;
-    
-    // Nano Banana returns base64 image data
-    if (response.candidates && response.candidates[0] && response.candidates[0].content && response.candidates[0].content.parts) {
-      const imagePart = response.candidates[0].content.parts.find(part => part.inlineData);
-      if (imagePart && imagePart.inlineData) {
-        return `data:${imagePart.inlineData.mimeType};base64,${imagePart.inlineData.data}`;
+    const response = await fetch(
+      "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          inputs: prompt,
+          parameters: {
+            width: 512,
+            height: 512
+          }
+        }),
       }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Stable Diffusion error: ${errorData.error || response.status}`);
     }
+
+    const imageBlob = await response.blob();
+    const arrayBuffer = await imageBlob.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    return `data:image/png;base64,${buffer.toString('base64')}`;
     
-    // Alternative response format check
-    if (response.text().includes('data:image')) {
-      return response.text();
-    }
-    
-    throw new Error('No image data received from Nano Banana');
   } catch (error) {
-    console.error("Nano Banana Generation Error:", error);
+    console.error("Stable Diffusion Error:", error);
+    throw error;
+  }
+}
+
+// FREE Video Generation - Stable Video Diffusion
+async function generateWithStableVideo(prompt) {
+  try {
+    const response = await fetch(
+      "https://api-inference.huggingface.co/models/stabilityai/stable-video-diffusion-img2vid",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          inputs: prompt,
+          parameters: {
+            num_frames: 25,
+            fps: 6
+          }
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(`Stable Video error: ${errorData.error || response.status}`);
+    }
+
+    const videoBlob = await response.blob();
+    const arrayBuffer = await videoBlob.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    return `data:video/mp4;base64,${buffer.toString('base64')}`;
+    
+  } catch (error) {
+    console.error("Stable Video Error:", error);
     throw error;
   }
 }
@@ -48,98 +92,75 @@ module.exports = async (req, res) => {
   if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
   try {
-    const { message, images, mode } = req.body;
+    const { message, images, mode, mediaType = 'image' } = req.body;
     
-    console.log("Request:", { 
-      mode, 
-      message: message?.substring(0, 50), 
-      imageCount: images?.length 
-    });
+    console.log("Request:", { mode, mediaType, message: message?.substring(0, 50) });
 
-    // Check if Gemini API Key is available
-    if (!process.env.GEMINI_API_KEY) {
-      return res.status(500).json({ 
-        error: 'Gemini API Key not configured' 
-      });
-    }
-
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-
-    // Image Generation with Nano Banana
-    if (mode === 'generate' && message) {
+    // FREE Image Generation
+    if (mode === 'generate' && message && mediaType === 'image') {
       try {
-        console.log("Starting Nano Banana image generation...");
-
-        let finalPrompt = message;
+        console.log("Starting FREE Image Generation...");
         
-        // If user uploaded image + text, enhance prompt using Gemini 2.0 Flash
-        if (images && images.length > 0) {
-          const analysisModel = genAI.getGenerativeModel({ 
-            model: "gemini-2.0-flash-exp"
-          });
-          
-          const imageParts = images.map(imgData => {
-            const mimeType = imgData.split(';')[0].split(':')[1];
-            return base64ToGenerativePart(imgData, mimeType);
-          });
-          
-          const analysisPrompt = `Analyze this image in detail and suggest how to create a new image based on it with this modification: ${message}`;
-          const result = await analysisModel.generateContent([analysisPrompt, ...imageParts]);
-          const analysis = result.response.text();
-          finalPrompt = `${message}. Based on this analysis: ${analysis}`;
-        }
-
-        const generatedImage = await generateWithNanoBanana(finalPrompt);
+        const generatedImage = await generateWithStableDiffusion(message);
         
         return res.status(200).json({ 
-          text: `IMAGE_GENERATED:${generatedImage}`, 
+          text: `IMAGE_GENERATED:${generatedImage}`,
+          message: "Image generated successfully! (FREE Version)",
           mode: 'generate', 
+          mediaType: 'image',
           success: true 
         });
 
       } catch (error) {
-        console.error("Nano Banana generation failed:", error);
+        console.error("FREE Image generation failed:", error);
         return res.status(200).json({ 
-          text: `❌ Image generation failed: ${error.message}. Please try again with a different prompt.`,
+          text: `❌ FREE Image generation failed: ${error.message}. Try a different prompt.`,
           mode: 'generate', 
           success: false 
         });
       }
     }
 
-    // Image Analysis with Gemini 2.0 Flash
+    // FREE Video Generation
+    if (mode === 'generate' && message && mediaType === 'video') {
+      try {
+        console.log("Starting FREE Video Generation...");
+        
+        const videoResult = await generateWithStableVideo(message);
+        
+        return res.status(200).json({ 
+          text: `VIDEO_GENERATED:${videoResult}`,
+          message: "Video generated successfully! (FREE Version)", 
+          mode: 'generate', 
+          mediaType: 'video',
+          success: true 
+        });
+
+      } catch (error) {
+        console.error("FREE Video generation failed:", error);
+        return res.status(200).json({ 
+          text: `❌ FREE Video generation failed: ${error.message}. Try again later.`,
+          mode: 'generate', 
+          success: false 
+        });
+      }
+    }
+
+    // Image Analysis with Gemini
     else if (images && images.length > 0) {
       try {
-        const model = genAI.getGenerativeModel({ 
-          model: "gemini-2.0-flash-exp",
-          generationConfig: {
-            maxOutputTokens: 2048,
-            temperature: 0.4,
-          }
-        });
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
         const imageParts = images.map(imgData => {
           const mimeType = imgData.split(';')[0].split(':')[1];
           return base64ToGenerativePart(imgData, mimeType);
         });
 
-        let prompt;
-        if (message) {
-          prompt = `Analyze this image carefully and: ${message}\n\nPlease provide detailed, accurate analysis.`;
-        } else {
-          prompt = `Describe this image in comprehensive detail. Include:
-1. Main subjects and objects
-2. Colors and visual style  
-3. Composition and setting
-4. Any text or symbols visible
-5. Overall context and mood`;
-        }
-
-        console.log("Starting Gemini image analysis...");
+        let prompt = message ? `Analyze this image: ${message}` : "Describe this image in detail.";
         const result = await model.generateContent([prompt, ...imageParts]);
         const response = await result.response;
         
-        console.log("Image analysis completed successfully");
         return res.status(200).json({ 
           text: response.text(), 
           mode: 'analyze', 
@@ -147,31 +168,24 @@ module.exports = async (req, res) => {
         });
 
       } catch (error) {
-        console.error("Gemini Image Analysis Error:", error);
+        console.error("Image analysis failed:", error);
         return res.status(200).json({ 
-          text: `❌ Image analysis failed: ${error.message}. Please try again with a clearer image.`,
+          text: `❌ Image analysis failed: ${error.message}`,
           mode: 'analyze', 
           success: false 
         });
       }
     }
 
-    // Text Chat with Gemini 2.0 Flash
+    // Text Chat with Gemini
     else if (message) {
       try {
-        const model = genAI.getGenerativeModel({ 
-          model: "gemini-2.0-flash-exp",
-          generationConfig: {
-            maxOutputTokens: 2048,
-            temperature: 0.7,
-          }
-        });
+        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
 
-        console.log("Starting Gemini chat...");
         const result = await model.generateContent(message);
         const response = await result.response;
         
-        console.log("Chat completed successfully");
         return res.status(200).json({ 
           text: response.text(), 
           mode: 'chat', 
@@ -179,26 +193,21 @@ module.exports = async (req, res) => {
         });
 
       } catch (error) {
-        console.error("Gemini Chat Error:", error);
+        console.error("Chat failed:", error);
         return res.status(200).json({ 
-          text: `❌ Chat failed: ${error.message}. Please try again.`,
+          text: `❌ Chat failed: ${error.message}`,
           mode: 'chat', 
           success: false 
         });
       }
     }
 
-    // No message or images provided
     else {
-      return res.status(400).json({ 
-        error: 'Message or image is required' 
-      });
+      return res.status(400).json({ error: 'Message or image is required' });
     }
 
   } catch (error) {
     console.error("API Error:", error);
-    return res.status(500).json({ 
-      error: `Internal server error: ${error.message}` 
-    });
+    return res.status(500).json({ error: error.message });
   }
 };
