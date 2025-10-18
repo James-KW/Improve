@@ -219,13 +219,6 @@
             margin: 5px 0;
             border: 1px solid #e0e0e0;
         }
-        .chat-video {
-            max-width: 400px;
-            max-height: 400px;
-            border-radius: 8px;
-            margin: 5px 0;
-            border: 1px solid #e0e0e0;
-        }
         .mode-selector {
             display: flex;
             gap: 10px;
@@ -245,6 +238,26 @@
         .mode-btn.active {
             background: #007bff;
             color: white;
+        }
+        .download-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 15px;
+            cursor: pointer;
+            font-size: 12px;
+            margin-top: 5px;
+        }
+        .download-btn:hover {
+            background: #218838;
+        }
+        .video-message {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            padding: 10px;
+            border-radius: 8px;
+            color: #856404;
         }
     </style>
 </head>
@@ -441,24 +454,38 @@
                 } else {
                     // For AI messages, type it out
                     if (text.startsWith('IMAGE_GENERATED:')) {
-                        // Handle generated image
+                        // Handle generated image with download button
                         const imageData = text.replace('IMAGE_GENERATED:', '');
+                        
                         const img = document.createElement('img');
                         img.src = imageData;
                         img.className = 'chat-image';
                         bubbleDiv.appendChild(img);
+                        
+                        // Download button
+                        const downloadBtn = document.createElement('button');
+                        downloadBtn.className = 'download-btn';
+                        downloadBtn.innerHTML = '📥 Download Image';
+                        downloadBtn.onclick = function() {
+                            const link = document.createElement('a');
+                            link.href = imageData;
+                            link.download = 'generated-image.png';
+                            link.click();
+                        };
+                        bubbleDiv.appendChild(downloadBtn);
+                        
                         chatContainer.scrollTop = chatContainer.scrollHeight;
                         resolve();
                     } else if (text.startsWith('VIDEO_GENERATED:')) {
-                        // Handle generated video
-                        const videoData = text.replace('VIDEO_GENERATED:', '');
-                        const video = document.createElement('video');
-                        video.src = videoData;
-                        video.className = 'chat-video';
-                        video.controls = true;
-                        video.autoplay = true;
-                        video.loop = true;
-                        bubbleDiv.appendChild(video);
+                        // Handle generated video - Temporary message
+                        const messageDiv = document.createElement('div');
+                        messageDiv.className = 'video-message';
+                        messageDiv.innerHTML = `
+                            🎥 <strong>Video Generation</strong><br>
+                            We're currently working on adding reliable free video generation.<br>
+                            Please try image generation for now!
+                        `;
+                        bubbleDiv.appendChild(messageDiv);
                         chatContainer.scrollTop = chatContainer.scrollHeight;
                         resolve();
                     } else {
@@ -506,6 +533,12 @@
             const images = [...uploadedImages];
             
             if (!message && images.length === 0) return;
+
+            // Video generation temporarily disable
+            if (currentMode === 'generate' && currentMediaType === 'video') {
+                await addMessage("🎥 Video generation is temporarily unavailable. We're working on adding reliable free video generation soon! Please use image generation for now.", false);
+                return;
+            }
 
             // Disable input while sending
             messageInput.disabled = true;
