@@ -154,46 +154,63 @@
             });
         }
 
-        // NEW: AI Response Formatting System
+        // SMART RESPONSE FORMATTING SYSTEM
         function formatAIResponse(message, userQuestion) {
-            const simpleQuestions = [
-                'how are you', 'hello', 'hi', 'what can you do',
-                'who are you', 'thanks', 'thank you', 'ok', 'okay',
-                'good morning', 'good afternoon', 'good evening'
-            ];
+            const lowerMessage = message.toLowerCase();
+            const lowerQuestion = userQuestion.toLowerCase();
             
-            const complexIndicators = [
-                'explain', 'describe', 'analyze', 'steps', 'how to',
-                'process', 'method', 'detailed', 'guide', 'what is',
-                'tell me about', 'can you help', 'help me'
-            ];
-            
-            const userQuestionLower = userQuestion.toLowerCase();
-            
-            // Simple questions - direct answer
-            if (simpleQuestions.some(q => userQuestionLower.includes(q))) {
+            // যদি answer ইতিমধ্যে formatted থাকে
+            if (lowerMessage.includes('**') || 
+                lowerMessage.includes('•') || 
+                lowerMessage.includes('📌') ||
+                lowerMessage.includes('🔹') ||
+                lowerMessage.includes('📝') ||
+                lowerMessage.includes('🎯') ||
+                (lowerMessage.includes('-') && message.length > 200)) {
                 return message;
             }
             
-            // Complex questions - step by step
-            if (complexIndicators.some(indicator => userQuestionLower.includes(indicator)) || 
-                message.length > 300) {
+            const simpleQuestions = [
+                'how are you', 'hello', 'hi', 'what can you do',
+                'who are you', 'thanks', 'thank you', 'ok', 'okay',
+                'good morning', 'good afternoon', 'good evening', 'hey'
+            ];
+            
+            // Simple questions - direct answer
+            if (simpleQuestions.some(q => lowerQuestion.includes(q))) {
+                return message;
+            }
+            
+            // যদি answer বড় হয় এবং structure করা যায়
+            if (message.length > 150) {
+                const sentences = message.split(/\.\s+/).filter(s => s.trim().length > 30);
                 
-                // Convert to step by step format
-                const sentences = message.split('. ').filter(s => s.trim().length > 20);
-                
-                if (sentences.length > 2) {
-                    let stepByStep = '';
-                    sentences.forEach((sentence, index) => {
-                        if (sentence.trim().length > 30) {
-                            stepByStep += `• ${sentence.trim()}.\n\n`;
-                        }
-                    });
-                    return stepByStep || message;
+                if (sentences.length >= 3) {
+                    let formattedResponse = '';
+                    
+                    if (sentences.length >= 1) {
+                        formattedResponse += `📌 ${sentences[0]}.`;
+                    }
+                    if (sentences.length >= 2) {
+                        formattedResponse += `\n\n🔹 ${sentences[1]}.`;
+                    }
+                    if (sentences.length >= 3) {
+                        formattedResponse += `\n\n💡 ${sentences.slice(2).join('. ')}`;
+                    }
+                    
+                    return formattedResponse;
                 }
             }
             
-            // Default - return as is
+            // Medium length answers - simple formatting
+            if (message.length > 80) {
+                const parts = message.split(/,|\s+and\s+/).filter(p => p.trim().length > 20);
+                if (parts.length >= 2) {
+                    return `📌 ${parts[0]}\n\n🔹 ${parts.slice(1).join(' ')}`;
+                }
+            }
+            
+            // সাধারণ answer এর জন্য
             return message;
         }
 
@@ -306,7 +323,7 @@
                 typingIndicator.style.display = 'none';
                 
                 if (data.success) {
-                    // Use AI formatting system
+                    // Use SMART formatting system
                     const formattedResponse = formatAIResponse(data.text, message);
                     await addMessage(formattedResponse, false, [], true);
                 } else {
