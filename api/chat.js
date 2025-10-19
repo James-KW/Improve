@@ -9,14 +9,14 @@ function base64ToGenerativePart(base64String, mimeType) {
     };
 }
 
-// Gemini Models
+// আপনার 2.5 Models
 const GEMINI_MODELS = [
-    "gemini-2.0-flash-exp",
-    "gemini-1.5-flash",
-    "gemini-1.5-pro"
+    "gemini-2.0-flash-exp",    // আপনার 2.5 Flash
+    "gemini-2.5-pro-exp",      // আপনার 2.5 Pro  
+    "gemini-1.5-flash"         // Fallback
 ];
 
-// Grok API for Backup
+// Grok API
 async function chatWithGrok(message) {
     try {
         const response = await fetch(
@@ -45,24 +45,15 @@ async function chatWithGrok(message) {
     }
 }
 
-// Gemini for Chat & Image Analysis
+// Gemini for Chat & Image Analysis - 2.5 Models
 async function chatWithGemini(message, images = []) {
     for (const modelName of GEMINI_MODELS) {
         try {
             console.log(`🔄 Trying Gemini model: ${modelName}`);
-            
             const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-            const model = genAI.getGenerativeModel({ 
-                model: modelName,
-                generationConfig: {
-                    temperature: 0.7,
-                    topK: 40,
-                    topP: 0.95,
-                }
-            });
+            const model = genAI.getGenerativeModel({ model: modelName });
 
             let contents = [];
-            
             if (images.length > 0) {
                 const imageParts = images.map(imgData => {
                     const mimeType = imgData.split(';')[0].split(':')[1];
@@ -76,107 +67,50 @@ async function chatWithGemini(message, images = []) {
             const result = await model.generateContent(contents);
             const response = await result.response;
             
+            console.log(`✅ Success with: ${modelName}`);
             return { text: response.text(), modelUsed: modelName };
-            
         } catch (error) {
             console.error(`❌ Gemini ${modelName} failed:`, error.message);
-            if (error.message.includes('MODEL_NOT_FOUND') || 
-                error.message.includes('not found') ||
-                error.message.includes('404') ||
-                error.message.includes('quota') || 
-                error.message.includes('limit') || 
-                error.message.includes('429')) {
-                continue;
-            }
+            if (error.message.includes('not found') || error.message.includes('404') || error.message.includes('quota') || error.message.includes('limit')) continue;
             throw error;
         }
     }
     throw new Error('ALL_GEMINI_MODELS_FAILED');
 }
 
-// Improved Hugging Face Image Generation with Better Quality
+// Hugging Face Image Generation
 async function generateWithHuggingFace(prompt) {
     try {
-        console.log("🎨 Starting HIGH QUALITY image generation...");
+        console.log("🎨 Starting image generation...");
         
-        // Better models for quality
-        const models = [
+        const response = await fetch(
+            "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5",
             {
-                name: "black-forest-labs/FLUX.1-schnell",
-                params: {
-                    guidance_scale: 7.5,
-                    num_inference_steps: 28,
-                    width: 768,
-                    height: 768
-                }
-            },
-            {
-                name: "stabilityai/stable-diffusion-xl-base-1.0", 
-                params: {
-                    guidance_scale: 7.5,
-                    num_inference_steps: 30,
-                    width: 1024,
-                    height: 1024
-                }
-            },
-            {
-                name: "runwayml/stable-diffusion-v1-5",
-                params: {
-                    guidance_scale: 7.5,
-                    num_inference_steps: 25,
-                    width: 512,
-                    height: 512
-                }
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({ 
+                    inputs: prompt
+                }),
             }
-        ];
+        );
 
-        for (let modelConfig of models) {
-            try {
-                console.log(`🎯 Trying model: ${modelConfig.name} with high quality settings`);
-                
-                const response = await fetch(
-                    `https://api-inference.huggingface.co/models/${modelConfig.name}`,
-                    {
-                        method: "POST",
-                        headers: {
-                            "Authorization": `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
-                            "Content-Type": "application/json",
-                        },
-                        body: JSON.stringify({ 
-                            inputs: prompt,
-                            parameters: modelConfig.params
-                        }),
-                    }
-                );
-
-                console.log(`📊 Response status: ${response.status}`);
-
-                if (response.status === 503) {
-                    console.log(`⏳ Model loading, trying next...`);
-                    continue;
-                }
-
-                if (!response.ok) {
-                    console.log(`❌ Model failed: ${response.status}`);
-                    continue;
-                }
-
-                const imageBlob = await response.blob();
-                console.log(`✅ High quality image generated: ${imageBlob.size} bytes`);
-                
-                const arrayBuffer = await imageBlob.arrayBuffer();
-                const buffer = Buffer.from(arrayBuffer);
-                const base64Image = `data:image/jpeg;base64,${buffer.toString('base64')}`;
-                
-                return base64Image;
-            } catch (error) {
-                console.log(`❌ Model ${modelConfig.name} error:`, error.message);
-                continue;
-            }
+        if (response.status === 503) {
+            throw new Error("Model is loading, please try again in 30 seconds");
         }
-        throw new Error("All image generation models failed");
+
+        if (!response.ok) {
+            throw new Error(`Hugging Face error: ${response.status}`);
+        }
+
+        const imageBlob = await response.blob();
+        const arrayBuffer = await imageBlob.arrayBuffer();
+        const buffer = Buffer.from(arrayBuffer);
+        return `data:image/jpeg;base64,${buffer.toString('base64')}`;
     } catch (error) {
-        console.error("❌ Image generation failed:", error);
+        console.error("Image generation failed:", error);
         throw error;
     }
 }
@@ -202,12 +136,12 @@ module.exports = async (req, res) => {
                 
                 return res.status(200).json({
                     text: `IMAGE_GENERATED:${generatedImage}`,
-                    message: "High quality image generated successfully!",
+                    message: "Image generated successfully!",
                     mode: 'generate',
                     success: true
                 });
             } catch (error) {
-                console.error("❌ Image generation failed:", error);
+                console.error("Image generation failed:", error);
                 return res.status(200).json({
                     text: `❌ Image generation failed: ${error.message}`,
                     mode: 'generate',
@@ -302,7 +236,7 @@ module.exports = async (req, res) => {
         }
 
     } catch (error) {
-        console.error("💥 API Error:", error);
+        console.error("API Error:", error);
         return res.status(500).json({ 
             success: false,
             error: error.message
