@@ -71,69 +71,15 @@ class ModelManager {
 
 const modelManager = new ModelManager();
 
-// Generate message in USER'S LANGUAGE
-async function generateImageMessage(userPrompt, actionType, source) {
-  try {
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
-
-    let messagePrompt;
-    
-    if (actionType === 'editing') {
-      messagePrompt = `
-User requested image editing in their own language: "${userPrompt}"
-
-FIRST: Detect which language the user is using.
-
-THEN: Generate a SHORT, friendly success message in THE SAME LANGUAGE as the user's request.
-The message should:
-- Confirm the edit was successful  
-- Be warm and engaging
-- Use emoji if appropriate
-- Be 1 line maximum
-- Sound natural in the detected language
-
-Respond ONLY in the detected language.
-`;
-    } else {
-      messagePrompt = `
-User requested image generation in their own language: "${userPrompt}"
-
-FIRST: Detect which language the user is using.
-
-THEN: Generate a SHORT, friendly success message in THE SAME LANGUAGE as the user's request.
-The message should:
-- Celebrate the created image
-- Be exciting and positive
-- Use emoji if appropriate
-- Be 1 line maximum  
-- Sound natural in the detected language
-
-Respond ONLY in the detected language.
-`;
-    }
-
-    const result = await model.generateContent(messagePrompt);
-    let message = result.response.text().trim();
-    
-    return message;
-    
-  } catch (error) {
-    console.error("Message generation failed, using universal message");
-    return actionType === 'editing' 
-      ? "✅ Edit successful!" 
-      : "🎨 Image created successfully!";
-  }
-}
-
-// Safety Check Function - Multilingual
+// Safety Check Function
 async function checkPromptSafety(prompt) {
   try {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
     const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
     
     const safetyCheckPrompt = `
-Analyze this image generation prompt in any language: "${prompt}"
+Analyze this image generation prompt for safety:
+"${prompt}"
 
 Respond ONLY with "SAFE" or "UNSAFE". No explanations.
 `;
@@ -218,7 +164,8 @@ async function generateImageSmart(prompt) {
           return { 
             image, 
             source: 'gemini', 
-            model: modelName
+            model: modelName,
+            message: "Image generated with Gemini 🎨"
           };
         }
       } catch (error) {
@@ -232,14 +179,15 @@ async function generateImageSmart(prompt) {
     return { 
       image, 
       source: 'huggingface', 
-      model: 'FLUX.1-schnell'
+      model: 'FLUX.1-schnell',
+      message: "Image generated with Hugging Face 🔄"
     };
   } catch (error) {
     throw new Error(`All image generation failed: ${error.message}`);
   }
 }
 
-// MULTILINGUAL Image Editing Function 
+// Gemini Image Editing Function - MULTILANGUAGE SUPPORT
 async function editImageWithGemini(originalImage, editInstruction) {
   try {
     const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
@@ -247,27 +195,27 @@ async function editImageWithGemini(originalImage, editInstruction) {
       model: "gemini-2.0-flash-exp"
     });
 
-    // MULTILINGUAL PROMPT - understands any language
+    // MULTILANGUAGE PROMPT - understands any language
     const prompt = `
+USER'S EDITING REQUEST (in any language): "${editInstruction}"
+
 ORIGINAL IMAGE: [the uploaded image]
-USER EDITING REQUEST (in any language): "${editInstruction}"
 
-INSTRUCTIONS (understand any language):
-1. EDIT THE ORIGINAL IMAGE - do not create new image from text
-2. Keep MAIN SUBJECT completely UNCHANGED (face, person, objects)
-3. Only modify what user specifically requested
-4. Maintain original image quality and style
-5. Understand the user's request in ANY language
+INSTRUCTIONS:
+1. Understand the user's request in ANY language (English, Bengali, Hindi, etc.)
+2. Edit the ORIGINAL image according to the request
+3. Keep the main subject UNCHANGED (face, person, object)
+4. Only modify what the user specifically requested
+5. Return ONLY the edited image, no text
 
-COMMON REQUESTS IN ANY LANGUAGE:
-- Background change / পরিবর্তন / changement d'arrière-plan / 背景変更
-- Add filter / ফিল্টার যোগ / agregar filtro / フィルター追加  
-- Enhance quality / গুণমান উন্নত / mejorar calidad / 品質向上
-- Change color / রঙ পরিবর্তন / cambiar color / 色変更
-- Remove object / বস্তু সরান / eliminar objeto / オブジェクト削除
+Common requests in different languages:
+- "background change" / "background poriborton" / "पृष्ठभूमि बदलें"
+- "add filter" / "filter add koro" / "फिल्टर जोड़ें" 
+- "enhance quality" / "quality bariye deo" / "गुणवत्ता बढ़ाएं"
+- "change color" / "color change koro" / "रंग बदलें"
+- "remove object" / "object remove koro" / "वस्तु हटाएं"
 
 EDIT THE IMAGE AS REQUESTED:
-RETURN ONLY THE EDITED IMAGE DATA - no text.
 `;
 
     const imagePart = {
@@ -284,80 +232,11 @@ RETURN ONLY THE EDITED IMAGE DATA - no text.
       const editedImageData = response.candidates[0].content.parts[0].inlineData.data;
       return `data:image/png;base64,${editedImageData}`;
     } else {
-      throw new Error("Editing failed - no image returned");
+      throw new Error("Gemini did not return edited image");
     }
 
   } catch (error) {
     console.error("Gemini image editing failed:", error);
-    throw error;
-  }
-}
-
-// MULTILINGUAL Prompt Enhancement
-async function enhancePromptMultilingual(userPrompt) {
-  try {
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
-
-    const enhancementPrompt = `
-User wants to generate an image. Their description in their own language: "${userPrompt}"
-
-INSTRUCTIONS:
-1. Understand the user's request in ANY language
-2. Create an improved, detailed prompt for image generation in ENGLISH
-3. Keep the original meaning and intent
-4. Make it suitable for AI image generation with good results
-5. Add specific details about appearance, style, setting, lighting, mood
-
-Return ONLY the improved English prompt, nothing else.
-`;
-
-    const result = await model.generateContent(enhancementPrompt);
-    const enhancedPrompt = result.response.text().trim();
-    return enhancedPrompt;
-    
-  } catch (error) {
-    console.error("Prompt enhancement failed, using original");
-    return userPrompt;
-  }
-}
-
-// MULTILINGUAL Image Analysis
-async function analyzeImageMultilingual(images, userMessage = "") {
-  try {
-    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-exp" });
-
-    let prompt;
-    if (userMessage) {
-      prompt = `
-User request in their language: "${userMessage}"
-
-Analyze the image and respond to the user's request.
-Respond in THE SAME LANGUAGE as the user's request.
-`;
-    } else {
-      prompt = `
-Describe this image in comprehensive detail.
-Respond in English unless you detect another language from context.
-Include:
-- Main subjects and objects
-- Colors and visual style  
-- Composition and setting
-- Overall context and mood
-`;
-    }
-
-    const imageParts = images.map(imgData => {
-      const mimeType = imgData.split(';')[0].split(':')[1];
-      return base64ToGenerativePart(imgData, mimeType);
-    });
-
-    const result = await model.generateContent([prompt, ...imageParts]);
-    const response = result.response.text();
-    return response;
-    
-  } catch (error) {
     throw error;
   }
 }
@@ -448,11 +327,10 @@ module.exports = async (req, res) => {
         
         console.log("Editing image with instruction:", message);
         const editedImage = await editImageWithGemini(originalImage, message);
-        const successMessage = await generateImageMessage(message, 'editing', 'gemini');
         
         return res.status(200).json({
           text: `IMAGE_GENERATED:${editedImage}`,
-          message: successMessage,
+          message: "Image edited successfully! ✨",
           source: 'gemini_edit',
           mode: 'generate',
           mediaType: 'image',
@@ -461,10 +339,8 @@ module.exports = async (req, res) => {
         
       } catch (error) {
         console.error("Image editing failed:", error);
-        const errorMessage = await generateImageMessage(message, 'editing', 'error');
         return res.status(200).json({
-          text: `❌ Image editing failed: ${error.message}`,
-          message: errorMessage,
+          text: `❌ Image editing failed: ${error.message}. Please try different instruction.`,
           mode: 'generate',
           success: false
         });
@@ -476,19 +352,28 @@ module.exports = async (req, res) => {
       try {
         console.log("🎨 Starting IMAGE GENERATION mode...");
         
-        // Enhance prompt in multilingual way
-        console.log("Enhancing multilingual prompt...");
-        const finalPrompt = await enhancePromptMultilingual(message);
+        let finalPrompt = message;
+        
+        // Enhance prompt with Gemini (only for generation, not editing)
+        console.log("Enhancing text prompt with Gemini...");
+        const enhancementPrompt = `
+User wants to generate an image with this description: "${message}"
+
+Create an improved, detailed prompt for image generation.
+
+Return ONLY the improved prompt, nothing else.
+`;
+        const enhancedPrompt = await callGeminiAPI(enhancementPrompt, null, "chat", "image");
+        finalPrompt = enhancedPrompt.trim();
         console.log("Enhanced prompt:", finalPrompt);
 
         // Generate image with SMART ROTATION SYSTEM
         console.log("Generating image...");
         const generationResult = await generateImageSmart(finalPrompt);
-        const successMessage = await generateImageMessage(message, 'generation', generationResult.source);
         
         return res.status(200).json({
           text: `IMAGE_GENERATED:${generationResult.image}`,
-          message: successMessage,
+          message: generationResult.message,
           source: generationResult.source,
           model: generationResult.model,
           mode: 'generate',
@@ -498,21 +383,26 @@ module.exports = async (req, res) => {
         
       } catch (error) {
         console.error("Image generation failed:", error);
-        const errorMessage = await generateImageMessage(message, 'generation', 'error');
         return res.status(200).json({
           text: `❌ Image generation failed: ${error.message}`,
-          message: errorMessage,
           mode: 'generate',
           success: false
         });
       }
     }
 
-    // MULTILINGUAL IMAGE ANALYSIS
+    // Image Analysis with Gemini
     else if (images && images.length > 0) {
       try {
-        console.log("Starting MULTILINGUAL image analysis...");
-        const analysis = await analyzeImageMultilingual(images, message);
+        let prompt;
+        if (message) {
+          prompt = `Analyze this image: ${message}`;
+        } else {
+          prompt = `Describe this image in detail`;
+        }
+        
+        console.log("Starting Gemini image analysis...");
+        const analysis = await callGeminiAPI(prompt, images, "analyze", "image");
         
         return res.status(200).json({
           text: analysis,
@@ -521,7 +411,7 @@ module.exports = async (req, res) => {
         });
         
       } catch (error) {
-        console.error("Image Analysis Error:", error);
+        console.error("Gemini Image Analysis Error:", error);
         return res.status(200).json({
           text: `❌ Image analysis failed: ${error.message}`,
           mode: 'analyze', 
@@ -530,24 +420,11 @@ module.exports = async (req, res) => {
       }
     }
 
-    // MULTILINGUAL TEXT CHAT
+    // Text Chat with Gemini
     else if (message) {
       try {
-        console.log("Starting MULTILINGUAL chat...");
-        
-        // Use Gemini to respond in user's language
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
-        
-        const chatPrompt = `
-User message in their language: "${message}"
-
-Respond to the user in THE SAME LANGUAGE as their message.
-Be helpful, friendly, and natural in the detected language.
-`;
-        
-        const result = await model.generateContent(chatPrompt);
-        const response = result.response.text();
+        console.log("Starting Gemini chat...");
+        const response = await callGeminiAPI(message, null, "chat", "text");
         
         return res.status(200).json({
           text: response,
@@ -556,7 +433,7 @@ Be helpful, friendly, and natural in the detected language.
         });
         
       } catch (error) {
-        console.error("Chat Error:", error);
+        console.error("Gemini Chat Error:", error);
         return res.status(200).json({
           text: `❌ Chat failed: ${error.message}`,
           mode: 'chat',
