@@ -12,7 +12,7 @@
         .message { margin-bottom: 15px; display: flex; }
         .user-message { justify-content: flex-end; }
         .ai-message { justify-content: flex-start; }
-        .message-bubble { max-width: 80%; padding: 10px 15px; border-radius: 15px; white-space: pre-line; }
+        .message-bubble { max-width: 80%; padding: 10px 15px; border-radius: 15px; position: relative; }
         .user-message .message-bubble { background: #007bff; color: white; }
         .ai-message .message-bubble { background: white; border: 1px solid #ddd; }
         .input-container { padding: 15px; background: white; border-top: 1px solid #ddd; display: flex; gap: 10px; }
@@ -49,6 +49,33 @@
         @keyframes blink {
             0%, 100% { opacity: 1; }
             50% { opacity: 0; }
+        }
+        
+        /* Copy Button Styles */
+        .copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+        .copy-btn:hover {
+            opacity: 1;
+        }
+        .concept-header {
+            font-weight: bold;
+            font-size: 16px;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #007bff;
         }
     </style>
 </head>
@@ -154,44 +181,57 @@
             });
         }
 
-        // COMPLETE CONCEPT-BASED RESPONSE SYSTEM
+        // Copy to clipboard function
+        function copyToClipboard(button) {
+            const messageBubble = button.closest('.message-bubble');
+            const text = messageBubble.innerText.replace('Copy', '').trim();
+            
+            navigator.clipboard.writeText(text).then(() => {
+                button.textContent = 'Copied!';
+                setTimeout(() => {
+                    button.textContent = 'Copy';
+                }, 2000);
+            });
+        }
+
+        // IMPROVED CONCEPT-BASED RESPONSE SYSTEM
         function formatAIResponse(message, userQuestion) {
             const lowerQuestion = userQuestion.toLowerCase();
             const lowerMessage = message.toLowerCase();
 
             // 1. DEFINITION QUESTIONS (What is, Define, Meaning)
             if (lowerQuestion.includes('what is') || lowerQuestion.includes('define') || lowerQuestion.includes('meaning of')) {
-                return `📚 Definition Overview\n\n📌 ${getFirstSentence(message)}\n\n🔹 ${getSecondSentence(message)}\n\n💡 ${getRemainingSentences(message)}`;
+                return `<div class="concept-header">📚 Definition Overview</div>\n\n${getFirstSentence(message)}\n\n${getSecondSentence(message)}\n\n${getRemainingSentences(message)}`;
             }
 
             // 2. EXPLANATION QUESTIONS (Explain, How does, Describe)
             if (lowerQuestion.includes('explain') || lowerQuestion.includes('how does') || lowerQuestion.includes('describe')) {
-                return `🔍 Detailed Explanation\n\n${formatAsSteps(message)}`;
+                return `<div class="concept-header">🔍 Detailed Explanation</div>\n\n${formatAsSteps(message)}`;
             }
 
             // 3. COMPARISON QUESTIONS (vs, difference between, compare)
             if (lowerQuestion.includes(' vs ') || lowerQuestion.includes('difference between') || lowerQuestion.includes('compare')) {
-                return `⚖️ Comparison Analysis\n\n${formatAsComparison(message)}`;
+                return `<div class="concept-header">⚖️ Comparison Analysis</div>\n\n${formatAsComparison(message)}`;
             }
 
             // 4. STEP-BY-STEP QUESTIONS (How to, steps, process)
             if (lowerQuestion.includes('how to') || lowerQuestion.includes('steps') || lowerQuestion.includes('process')) {
-                return `🔄 Step-by-Step Guide\n\n${formatAsNumberedSteps(message)}`;
+                return `<div class="concept-header">🔄 Step-by-Step Guide</div>\n\n${formatAsNumberedSteps(message)}`;
             }
 
             // 5. LIST QUESTIONS (List, examples, types)
             if (lowerQuestion.includes('list') || lowerQuestion.includes('examples') || lowerQuestion.includes('types of')) {
-                return `📋 Itemized List\n\n${formatAsList(message)}`;
+                return `<div class="concept-header">📋 Itemized List</div>\n\n${formatAsList(message)}`;
             }
 
             // 6. ANALYSIS QUESTIONS (Analyze, review, discuss)
             if (lowerQuestion.includes('analyze') || lowerQuestion.includes('review') || lowerQuestion.includes('discuss')) {
-                return `📊 In-Depth Analysis\n\n${formatAsAnalysis(message)}`;
+                return `<div class="concept-header">📊 In-Depth Analysis</div>\n\n${formatAsAnalysis(message)}`;
             }
 
             // 7. Default formatting for long responses
             if (message.length > 200 && !lowerMessage.includes('**')) {
-                return `📝 Comprehensive Answer\n\n${formatAsStructured(message)}`;
+                return `<div class="concept-header">📝 Comprehensive Answer</div>\n\n${formatAsStructured(message)}`;
             }
 
             return message;
@@ -288,7 +328,7 @@
             return structured;
         }
 
-        // MODIFIED: addMessage function with typing effect
+        // MODIFIED: addMessage function with typing effect and copy button
         async function addMessage(message, isUser = false, images = [], useTyping = false) {
             const chatContainer = document.getElementById('chatContainer');
             const messageDiv = document.createElement('div');
@@ -315,7 +355,7 @@
                     bubbleDiv.appendChild(textElement);
                 }
             } else {
-                // AI message - use typing effect
+                // AI message - use typing effect with copy button
                 if (message.startsWith('IMAGE_GENERATED:')) {
                     // Handle generated images
                     const imageData = message.replace('IMAGE_GENERATED:', '');
@@ -336,11 +376,18 @@
                     textElement.textContent = 'Here is your generated image!';
                     bubbleDiv.appendChild(textElement);
                 } else {
+                    // Add copy button for AI text responses
+                    const copyBtn = document.createElement('button');
+                    copyBtn.className = 'copy-btn';
+                    copyBtn.textContent = 'Copy';
+                    copyBtn.onclick = function() { copyToClipboard(this); };
+                    bubbleDiv.appendChild(copyBtn);
+                    
                     // Text message - use typing effect
                     if (useTyping) {
                         await typeText(bubbleDiv, message, 15);
                     } else {
-                        bubbleDiv.textContent = message;
+                        bubbleDiv.innerHTML += message;
                     }
                 }
             }
