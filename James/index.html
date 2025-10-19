@@ -1,3 +1,4 @@
+akta kaj koro ami akta script ditaci otay add kore deo. exciting script unchanged. 
 <!DOCTYPE html>
 <html>
 <head>
@@ -12,7 +13,7 @@
         .message { margin-bottom: 15px; display: flex; }
         .user-message { justify-content: flex-end; }
         .ai-message { justify-content: flex-start; }
-        .message-bubble { max-width: 80%; padding: 10px 15px; border-radius: 15px; white-space: pre-line; }
+        .message-bubble { max-width: 80%; padding: 10px 15px; border-radius: 15px; }
         .user-message .message-bubble { background: #007bff; color: white; }
         .ai-message .message-bubble { background: white; border: 1px solid #ddd; }
         .input-container { padding: 15px; background: white; border-top: 1px solid #ddd; display: flex; gap: 10px; }
@@ -154,65 +155,47 @@
             });
         }
 
-        // IMPROVED AI Response Formatting System
+        // NEW: AI Response Formatting System
         function formatAIResponse(message, userQuestion) {
-            // যদি error message হয়, directly return করো
-            if (message.includes('Error:') || message.includes('failed') || message.includes('quota')) {
-                return message;
-            }
-            
-            // যদি image data হয়, directly return করো
-            if (message.startsWith('IMAGE_GENERATED:')) {
-                return message;
-            }
-            
-            const lowerQuestion = userQuestion.toLowerCase();
-            
-            // Remove all * stars from the message
-            let cleanMessage = message.replace(/\*/g, '');
-
-            // Simple questions - direct answer
             const simpleQuestions = [
                 'how are you', 'hello', 'hi', 'what can you do',
                 'who are you', 'thanks', 'thank you', 'ok', 'okay',
                 'good morning', 'good afternoon', 'good evening'
             ];
             
-            if (simpleQuestions.some(q => lowerQuestion.includes(q))) {
-                return cleanMessage;
+            const complexIndicators = [
+                'explain', 'describe', 'analyze', 'steps', 'how to',
+                'process', 'method', 'detailed', 'guide', 'what is',
+                'tell me about', 'can you help', 'help me'
+            ];
+            
+            const userQuestionLower = userQuestion.toLowerCase();
+            
+            // Simple questions - direct answer
+            if (simpleQuestions.some(q => userQuestionLower.includes(q))) {
+                return message;
             }
-
-            // DEFINITION QUESTIONS
-            if (lowerQuestion.includes('what is') || lowerQuestion.includes('define') || lowerQuestion.includes('meaning of')) {
-                return `📚 Definition Overview\n\n${cleanMessage}`;
+            
+            // Complex questions - step by step
+            if (complexIndicators.some(indicator => userQuestionLower.includes(indicator)) || 
+                message.length > 300) {
+                
+                // Convert to step by step format
+                const sentences = message.split('. ').filter(s => s.trim().length > 20);
+                
+                if (sentences.length > 2) {
+                    let stepByStep = '';
+                    sentences.forEach((sentence, index) => {
+                        if (sentence.trim().length > 30) {
+                            stepByStep += `• ${sentence.trim()}.\n\n`;
+                        }
+                    });
+                    return stepByStep || message;
+                }
             }
-
-            // EXPLANATION QUESTIONS
-            if (lowerQuestion.includes('explain') || lowerQuestion.includes('describe')) {
-                return `🔍 Detailed Explanation\n\n${cleanMessage}`;
-            }
-
-            // COMPARISON QUESTIONS
-            if (lowerQuestion.includes(' vs ') || lowerQuestion.includes('difference between') || lowerQuestion.includes('compare')) {
-                return `⚖️ Comparison Analysis\n\n${cleanMessage}`;
-            }
-
-            // STEP-BY-STEP QUESTIONS
-            if (lowerQuestion.includes('how to') || lowerQuestion.includes('steps') || lowerQuestion.includes('process')) {
-                return `🔄 Step-by-Step Guide\n\n${cleanMessage}`;
-            }
-
-            // LIST QUESTIONS
-            if (lowerQuestion.includes('list') || lowerQuestion.includes('examples') || lowerQuestion.includes('types of')) {
-                return `📋 Itemized List\n\n${cleanMessage}`;
-            }
-
-            // Default formatting for long responses
-            if (cleanMessage.length > 150) {
-                return `📝 Comprehensive Answer\n\n${cleanMessage}`;
-            }
-
-            return cleanMessage;
+            
+            // Default - return as is
+            return message;
         }
 
         // MODIFIED: addMessage function with typing effect
