@@ -1,11 +1,9 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-    <title>James AI Chat - Image Support</title>
-    <!-- PWA Support -->
-    <link rel="manifest" href="/manifest.json">
-    <meta name="theme-color" content="#667eea">
+    <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>James AI - Image & Text Assistant</title>
     <style>
         * {
             margin: 0;
@@ -112,7 +110,6 @@
             color: #333;
             border: 1px solid #e0e0e0;
             border-bottom-left-radius: 5px;
-            min-height: 20px;
         }
 
         .message-info {
@@ -124,36 +121,6 @@
 
         .ai-message .message-info {
             text-align: left;
-        }
-
-        .code-block {
-            background: #1e1e1e;
-            color: #d4d4d4;
-            padding: 15px;
-            border-radius: 8px;
-            margin: 10px 0;
-            font-family: 'Consolas', 'Monaco', monospace;
-            font-size: 14px;
-            overflow-x: auto;
-            position: relative;
-            line-height: 1.5;
-        }
-
-        .copy-btn {
-            position: absolute;
-            top: 8px;
-            right: 8px;
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 4px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-
-        .copy-btn:hover {
-            background: #0056b3;
         }
 
         .input-container {
@@ -232,7 +199,6 @@
             50% { opacity: 0; }
         }
 
-        /* Image Upload Styles */
         .upload-container {
             display: flex;
             gap: 10px;
@@ -316,6 +282,25 @@
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
+        .download-btn {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+            margin-top: 10px;
+            display: inline-flex;
+            align-items: center;
+            gap: 5px;
+            transition: background 0.3s;
+        }
+
+        .download-btn:hover {
+            background: #218838;
+        }
+
         .mode-selector {
             display: flex;
             gap: 10px;
@@ -356,17 +341,6 @@
             border-left: 3px solid #007bff;
         }
 
-        .model-badge {
-            display: inline-block;
-            background: #6c757d;
-            color: white;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-size: 10px;
-            margin-left: 5px;
-        }
-
-        /* Responsive Design */
         @media (max-width: 768px) {
             .container {
                 height: 95vh;
@@ -400,7 +374,6 @@
             }
         }
 
-        /* Scrollbar Styling */
         .chat-container::-webkit-scrollbar {
             width: 6px;
         }
@@ -436,9 +409,9 @@
                     I can help you with:<br>
                     • 💬 <strong>Chat</strong> - General conversations<br>
                     • 🔍 <strong>Analyze Images</strong> - Upload images and ask questions<br>
-                    • 🎨 <strong>Generate Images</strong> - Create new images from text or reference images<br><br>
+                    • 🎨 <strong>Generate Images</strong> - Create new images from text<br><br>
                     <div class="usage-info">
-                        💡 <strong>Tip:</strong> You can upload reference images in any mode to enhance responses!
+                        💡 <strong>Tip:</strong> Upload images in Analyze mode for detailed analysis!
                     </div>
                 </div>
             </div>
@@ -488,18 +461,9 @@
     <script>
         let currentMode = 'chat';
         let uploadedImages = [];
-        let messageCount = 0;
-
-        // Initialize the app
-        function initApp() {
-            console.log("🚀 James AI initialized");
-            setMode('chat');
-            document.getElementById('messageInput').focus();
-        }
 
         function setMode(mode) {
             currentMode = mode;
-            messageCount++;
             
             console.log(`🔄 Mode changed to: ${mode}`);
             
@@ -517,7 +481,7 @@
                     messageInput.placeholder = 'Ask about the uploaded images or leave empty for description...';
                     break;
                 case 'generate':
-                    messageInput.placeholder = 'Describe what you want to generate (you can upload reference images)...';
+                    messageInput.placeholder = 'Describe the image you want to generate...';
                     break;
                 default:
                     messageInput.placeholder = 'Type your message here...';
@@ -559,7 +523,6 @@
                 }
             }
             
-            // Reset file input
             event.target.value = '';
         }
 
@@ -568,13 +531,11 @@
             const img = previewDiv.querySelector('img');
             const imageSrc = img.src;
             
-            // Remove from uploadedImages array
             const index = uploadedImages.indexOf(imageSrc);
             if (index > -1) {
                 uploadedImages.splice(index, 1);
             }
             
-            // Remove from DOM
             previewDiv.remove();
             console.log("🗑️ Image removed");
         }
@@ -608,6 +569,15 @@
             }, 100);
         }
 
+        function downloadImage(imageData, filename) {
+            const link = document.createElement('a');
+            link.href = imageData;
+            link.download = filename;
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        }
+
         function addMessage(message, isUser = false, images = [], modelUsed = null) {
             const chatContainer = document.getElementById('chatContainer');
             const messageDiv = document.createElement('div');
@@ -622,10 +592,21 @@
                 });
             }
             
-            // Handle generated images from AI
+            // Handle generated images from AI - WITH DOWNLOAD BUTTON
             if (message.startsWith('IMAGE_GENERATED:')) {
                 const imageData = message.replace('IMAGE_GENERATED:', '');
-                bubbleContent += `<img src="${imageData}" class="chat-image" alt="Generated image"><br>`;
+                const timestamp = new Date().getTime();
+                const filename = `generated-image-${timestamp}.jpg`;
+                
+                bubbleContent += `
+                    <div style="text-align: center;">
+                        <img src="${imageData}" class="chat-image" alt="Generated image">
+                        <br>
+                        <button class="download-btn" onclick="downloadImage('${imageData}', '${filename}')">
+                            📥 Download Image
+                        </button>
+                    </div>
+                    <br>`;
                 message = '🎨 Here is your generated image!';
             }
             
@@ -651,30 +632,27 @@
                 return;
             }
 
-            // Disable send button during request
             sendButton.disabled = true;
             sendButton.innerHTML = '<span>Sending...</span><span>⏳</span>';
             
-            // Add user message to chat with images
             addMessage(message, true, [...uploadedImages]);
 
-            // Clear input but keep images for reference in generate mode
             messageInput.value = '';
             const userImages = [...uploadedImages];
             
-            // Only clear images if not in generate mode with reference
-            if (currentMode !== 'generate') {
-                clearImagePreviews();
-            }
+            clearImagePreviews();
             
             showTypingIndicator();
 
             try {
                 const requestBody = {
                     message: message,
-                    mode: currentMode,
-                    images: userImages // সব mode এ images send করবে
+                    mode: currentMode
                 };
+
+                if (currentMode === 'analyze' && userImages.length > 0) {
+                    requestBody.images = userImages;
+                }
 
                 console.log("📤 Sending request:", { 
                     mode: currentMode, 
@@ -686,7 +664,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                    'X-Request-ID': `msg-${Date.now()}-${messageCount}`
+                    'X-Request-ID': `msg-${Date.now()}`
                     },
                     body: JSON.stringify(requestBody),
                 });
@@ -711,8 +689,6 @@
                 sendButton.disabled = false;
                 sendButton.innerHTML = '<span>Send</span><span>📤</span>';
                 messageInput.focus();
-                
-                // Auto-resize textarea
                 messageInput.style.height = 'auto';
             }
         }
@@ -723,24 +699,12 @@
             this.style.height = Math.min(this.scrollHeight, 150) + 'px';
         });
 
-        // Handle paste event for images
-        document.getElementById('messageInput').addEventListener('paste', function(e) {
-            const items = e.clipboardData?.items;
-            if (items) {
-                for (let item of items) {
-                    if (item.type.startsWith('image/')) {
-                        e.preventDefault();
-                        const file = item.getAsFile();
-                        const fakeEvent = { target: { files: [file] } };
-                        handleImageUpload(fakeEvent);
-                        break;
-                    }
-                }
-            }
-        });
-
         // Initialize when page loads
-        document.addEventListener('DOMContentLoaded', initApp);
+        document.addEventListener('DOMContentLoaded', function() {
+            console.log("🚀 James AI initialized");
+            setMode('chat');
+            document.getElementById('messageInput').focus();
+        });
 
         // Handle page visibility changes
         document.addEventListener('visibilitychange', function() {
