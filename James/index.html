@@ -5,6 +5,7 @@
     <!-- PWA Support -->
     <link rel="manifest" href="/manifest.json">
     <meta name="theme-color" content="#667eea">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
         * {
             margin: 0;
@@ -36,11 +37,40 @@
             color: white;
             padding: 20px;
             text-align: center;
+            position: relative;
         }
 
         .header h1 {
             margin: 0;
             font-size: 24px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .status-indicator {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 12px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #28a745;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
         }
 
         .chat-container {
@@ -68,6 +98,7 @@
             padding: 12px 16px;
             border-radius: 18px;
             position: relative;
+            word-wrap: break-word;
         }
 
         .user-message .message-bubble {
@@ -82,6 +113,17 @@
             border: 1px solid #e0e0e0;
             border-bottom-left-radius: 5px;
             min-height: 20px;
+        }
+
+        .message-info {
+            font-size: 11px;
+            color: #666;
+            margin-top: 5px;
+            text-align: right;
+        }
+
+        .ai-message .message-info {
+            text-align: left;
         }
 
         .code-block {
@@ -133,6 +175,7 @@
             transition: border-color 0.3s;
             min-height: 50px;
             resize: vertical;
+            font-family: inherit;
         }
 
         #messageInput:focus {
@@ -149,6 +192,9 @@
             font-size: 16px;
             transition: background 0.3s;
             height: 50px;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
 
         #sendButton:hover {
@@ -165,6 +211,11 @@
             padding: 10px 16px;
             color: #666;
             font-style: italic;
+            background: white;
+            margin: 10px;
+            border-radius: 18px;
+            border: 1px solid #e0e0e0;
+            max-width: fit-content;
         }
 
         .typing-cursor {
@@ -187,6 +238,7 @@
             gap: 10px;
             margin-bottom: 10px;
             flex-wrap: wrap;
+            align-items: center;
         }
 
         .upload-btn {
@@ -198,6 +250,9 @@
             cursor: pointer;
             font-size: 14px;
             transition: background 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
 
         .upload-btn:hover {
@@ -222,6 +277,11 @@
             border-radius: 8px;
             overflow: hidden;
             border: 2px solid #007bff;
+            transition: transform 0.2s;
+        }
+
+        .preview-image:hover {
+            transform: scale(1.05);
         }
 
         .preview-image img {
@@ -242,6 +302,9 @@
             height: 20px;
             cursor: pointer;
             font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
         }
 
         .chat-image {
@@ -250,12 +313,14 @@
             border-radius: 8px;
             margin: 5px 0;
             border: 1px solid #e0e0e0;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
         }
 
         .mode-selector {
             display: flex;
             gap: 10px;
             margin-bottom: 10px;
+            flex-wrap: wrap;
         }
 
         .mode-btn {
@@ -267,11 +332,90 @@
             cursor: pointer;
             font-size: 14px;
             transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            gap: 5px;
         }
 
         .mode-btn.active {
             background: #007bff;
             color: white;
+        }
+
+        .mode-btn:hover:not(.active) {
+            background: #e3f2fd;
+        }
+
+        .usage-info {
+            font-size: 12px;
+            color: #666;
+            margin-top: 5px;
+            padding: 5px 10px;
+            background: #f8f9fa;
+            border-radius: 10px;
+            border-left: 3px solid #007bff;
+        }
+
+        .model-badge {
+            display: inline-block;
+            background: #6c757d;
+            color: white;
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 10px;
+            margin-left: 5px;
+        }
+
+        /* Responsive Design */
+        @media (max-width: 768px) {
+            .container {
+                height: 95vh;
+                border-radius: 10px;
+            }
+            
+            .header h1 {
+                font-size: 18px;
+            }
+            
+            .message-bubble {
+                max-width: 90%;
+            }
+            
+            .mode-selector {
+                gap: 5px;
+            }
+            
+            .mode-btn {
+                padding: 6px 12px;
+                font-size: 12px;
+            }
+            
+            .input-container {
+                padding: 15px;
+            }
+            
+            #sendButton {
+                padding: 10px 20px;
+                font-size: 14px;
+            }
+        }
+
+        /* Scrollbar Styling */
+        .chat-container::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        .chat-container::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 3px;
+        }
+
+        .chat-container::-webkit-scrollbar-thumb:hover {
+            background: #a8a8a8;
         }
     </style>
 </head>
@@ -279,12 +423,23 @@
     <div class="container">
         <div class="header">
             <h1>🚀 James AI - Image & Text Assistant</h1>
+            <div class="status-indicator">
+                <div class="status-dot"></div>
+                <span>Online</span>
+            </div>
         </div>
         
         <div class="chat-container" id="chatContainer">
             <div class="message ai-message">
                 <div class="message-bubble">
-                    Hello! I'm James AI. I can analyze images, generate images from text, and chat with you! Upload an image or type your message.
+                    <strong>Hello! I'm James AI 🤖</strong><br><br>
+                    I can help you with:<br>
+                    • 💬 <strong>Chat</strong> - General conversations<br>
+                    • 🔍 <strong>Analyze Images</strong> - Upload images and ask questions<br>
+                    • 🎨 <strong>Generate Images</strong> - Create new images from text or reference images<br><br>
+                    <div class="usage-info">
+                        💡 <strong>Tip:</strong> You can upload reference images in any mode to enhance responses!
+                    </div>
                 </div>
             </div>
         </div>
@@ -296,9 +451,15 @@
         <div class="input-container">
             <div style="flex: 1;">
                 <div class="mode-selector">
-                    <button class="mode-btn active" data-mode="chat" onclick="setMode('chat')">💬 Chat</button>
-                    <button class="mode-btn" data-mode="analyze" onclick="setMode('analyze')">🔍 Analyze Image</button>
-                    <button class="mode-btn" data-mode="generate" onclick="setMode('generate')">🎨 Generate Image</button>
+                    <button class="mode-btn active" data-mode="chat" onclick="setMode('chat')">
+                        💬 Chat
+                    </button>
+                    <button class="mode-btn" data-mode="analyze" onclick="setMode('analyze')">
+                        🔍 Analyze Image
+                    </button>
+                    <button class="mode-btn" data-mode="generate" onclick="setMode('generate')">
+                        🎨 Generate Image
+                    </button>
                 </div>
                 
                 <div class="upload-container" id="uploadContainer">
@@ -317,16 +478,30 @@
                 ></textarea>
             </div>
             
-            <button id="sendButton" onclick="sendMessage()">Send</button>
+            <button id="sendButton" onclick="sendMessage()">
+                <span>Send</span>
+                <span>📤</span>
+            </button>
         </div>
     </div>
 
     <script>
         let currentMode = 'chat';
         let uploadedImages = [];
+        let messageCount = 0;
+
+        // Initialize the app
+        function initApp() {
+            console.log("🚀 James AI initialized");
+            setMode('chat');
+            document.getElementById('messageInput').focus();
+        }
 
         function setMode(mode) {
             currentMode = mode;
+            messageCount++;
+            
+            console.log(`🔄 Mode changed to: ${mode}`);
             
             // Update button states
             document.querySelectorAll('.mode-btn').forEach(btn => {
@@ -334,26 +509,32 @@
             });
             document.querySelector(`[data-mode="${mode}"]`).classList.add('active');
             
-            // Update UI based on mode
-            const uploadContainer = document.getElementById('uploadContainer');
+            // Update placeholder based on mode
             const messageInput = document.getElementById('messageInput');
             
-            if (mode === 'analyze') {
-                uploadContainer.style.display = 'flex';
-                messageInput.placeholder = 'Ask about the uploaded images or leave empty for general description...';
-            } else if (mode === 'generate') {
-                uploadContainer.style.display = 'none';
-                messageInput.placeholder = 'Describe the image you want to generate...';
-                clearImagePreviews();
-            } else {
-                uploadContainer.style.display = 'flex';
-                messageInput.placeholder = 'Type your message here...';
+            switch(mode) {
+                case 'analyze':
+                    messageInput.placeholder = 'Ask about the uploaded images or leave empty for description...';
+                    break;
+                case 'generate':
+                    messageInput.placeholder = 'Describe what you want to generate (you can upload reference images)...';
+                    break;
+                default:
+                    messageInput.placeholder = 'Type your message here...';
             }
+            
+            // Upload container সবসময় visible থাকবে
+            const uploadContainer = document.getElementById('uploadContainer');
+            uploadContainer.style.display = 'flex';
         }
 
         function handleImageUpload(event) {
             const files = event.target.files;
             const previewContainer = document.getElementById('imagePreview');
+            
+            if (files.length > 0) {
+                console.log(`📸 ${files.length} image(s) selected`);
+            }
             
             for (let file of files) {
                 if (file.type.startsWith('image/')) {
@@ -373,6 +554,8 @@
                     };
                     
                     reader.readAsDataURL(file);
+                } else {
+                    alert('Please select only image files');
                 }
             }
             
@@ -393,11 +576,13 @@
             
             // Remove from DOM
             previewDiv.remove();
+            console.log("🗑️ Image removed");
         }
 
         function clearImagePreviews() {
             document.getElementById('imagePreview').innerHTML = '';
             uploadedImages = [];
+            console.log("🔄 Image previews cleared");
         }
 
         function handleKeyPress(event) {
@@ -418,37 +603,38 @@
 
         function scrollToBottom() {
             const chatContainer = document.getElementById('chatContainer');
-            chatContainer.scrollTop = chatContainer.scrollHeight;
+            setTimeout(() => {
+                chatContainer.scrollTop = chatContainer.scrollHeight;
+            }, 100);
         }
 
-        function addMessage(message, isUser = false, images = []) {
+        function addMessage(message, isUser = false, images = [], modelUsed = null) {
             const chatContainer = document.getElementById('chatContainer');
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
             
             let bubbleContent = '';
             
+            // Show uploaded images in user message
             if (isUser && images.length > 0) {
                 images.forEach(imgData => {
                     bubbleContent += `<img src="${imgData}" class="chat-image" alt="Uploaded image"><br>`;
                 });
             }
             
+            // Handle generated images from AI
             if (message.startsWith('IMAGE_GENERATED:')) {
                 const imageData = message.replace('IMAGE_GENERATED:', '');
                 bubbleContent += `<img src="${imageData}" class="chat-image" alt="Generated image"><br>`;
-                message = 'Here is your generated image!';
-            } else if (message.startsWith('VIDEO_GENERATED:')) {
-                const videoData = message.replace('VIDEO_GENERATED:', '');
-                bubbleContent += `
-                    <video controls class="chat-image">
-                        <source src="${videoData}" type="video/mp4">
-                        Your browser does not support the video tag.
-                    </video><br>`;
-                message = 'Here is your generated video!';
+                message = '🎨 Here is your generated image!';
             }
             
             bubbleContent += message;
+            
+            // Add model info for AI messages
+            if (!isUser && modelUsed) {
+                bubbleContent += `<div class="message-info">Generated with: ${modelUsed}</div>`;
+            }
             
             messageDiv.innerHTML = `<div class="message-bubble">${bubbleContent}</div>`;
             chatContainer.appendChild(messageDiv);
@@ -460,61 +646,108 @@
             const message = messageInput.value.trim();
             const sendButton = document.getElementById('sendButton');
             
-            if ((!message && uploadedImages.length === 0) || sendButton.disabled) {
+            if (!message && uploadedImages.length === 0) {
+                alert("Please enter a message or upload an image");
                 return;
             }
 
             // Disable send button during request
             sendButton.disabled = true;
+            sendButton.innerHTML = '<span>Sending...</span><span>⏳</span>';
             
-            // Add user message to chat
+            // Add user message to chat with images
             addMessage(message, true, [...uploadedImages]);
-            
-            // Clear input and images
+
+            // Clear input but keep images for reference in generate mode
             messageInput.value = '';
             const userImages = [...uploadedImages];
-            clearImagePreviews();
+            
+            // Only clear images if not in generate mode with reference
+            if (currentMode !== 'generate') {
+                clearImagePreviews();
+            }
             
             showTypingIndicator();
 
             try {
+                const requestBody = {
+                    message: message,
+                    mode: currentMode,
+                    images: userImages // সব mode এ images send করবে
+                };
+
+                console.log("📤 Sending request:", { 
+                    mode: currentMode, 
+                    message: message,
+                    hasImages: userImages.length > 0 
+                });
+
                 const response = await fetch('/api/chat', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                    'X-Request-ID': `msg-${Date.now()}-${messageCount}`
                     },
-                    body: JSON.stringify({
-                        message: message,
-                        images: userImages,
-                        mode: currentMode
-                    }),
+                    body: JSON.stringify(requestBody),
                 });
 
+                if (!response.ok) {
+                    throw new Error(`HTTP error! status: ${response.status}`);
+                }
+
                 const data = await response.json();
+                console.log("📥 API Response:", data);
 
                 if (data.success) {
-                    addMessage(data.text, false);
+                    addMessage(data.text, false, [], data.modelUsed);
                 } else {
-                    addMessage(`❌ Error: ${data.text || 'Something went wrong'}`, false);
+                    addMessage(`❌ ${data.text || 'An error occurred'}`, false);
                 }
             } catch (error) {
-                console.error('Error:', error);
-                addMessage('❌ Network error. Please try again.', false);
+                console.error('❌ Network error:', error);
+                addMessage('❌ Network error. Please check your connection and try again.', false);
             } finally {
                 hideTypingIndicator();
                 sendButton.disabled = false;
+                sendButton.innerHTML = '<span>Send</span><span>📤</span>';
                 messageInput.focus();
+                
+                // Auto-resize textarea
+                messageInput.style.height = 'auto';
             }
         }
 
         // Auto-resize textarea
         document.getElementById('messageInput').addEventListener('input', function() {
             this.style.height = 'auto';
-            this.style.height = (this.scrollHeight) + 'px';
+            this.style.height = Math.min(this.scrollHeight, 150) + 'px';
         });
 
-        // Initialize
-        document.getElementById('messageInput').focus();
+        // Handle paste event for images
+        document.getElementById('messageInput').addEventListener('paste', function(e) {
+            const items = e.clipboardData?.items;
+            if (items) {
+                for (let item of items) {
+                    if (item.type.startsWith('image/')) {
+                        e.preventDefault();
+                        const file = item.getAsFile();
+                        const fakeEvent = { target: { files: [file] } };
+                        handleImageUpload(fakeEvent);
+                        break;
+                    }
+                }
+            }
+        });
+
+        // Initialize when page loads
+        document.addEventListener('DOMContentLoaded', initApp);
+
+        // Handle page visibility changes
+        document.addEventListener('visibilitychange', function() {
+            if (!document.hidden) {
+                document.getElementById('messageInput').focus();
+            }
+        });
     </script>
 </body>
 </html>
