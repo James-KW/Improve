@@ -12,7 +12,7 @@
         .message { margin-bottom: 15px; display: flex; }
         .user-message { justify-content: flex-end; }
         .ai-message { justify-content: flex-start; }
-        .message-bubble { max-width: 80%; padding: 10px 15px; border-radius: 15px; }
+        .message-bubble { max-width: 80%; padding: 10px 15px; border-radius: 15px; position: relative; white-space: pre-line; }
         .user-message .message-bubble { background: #007bff; color: white; }
         .ai-message .message-bubble { background: white; border: 1px solid #ddd; }
         .input-container { padding: 15px; background: white; border-top: 1px solid #ddd; display: flex; gap: 10px; }
@@ -49,6 +49,33 @@
         @keyframes blink {
             0%, 100% { opacity: 1; }
             50% { opacity: 0; }
+        }
+        
+        /* Copy Button and Header Styles */
+        .copy-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: #007bff;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            opacity: 0.7;
+            transition: opacity 0.3s;
+        }
+        .copy-btn:hover {
+            opacity: 1;
+        }
+        .concept-header {
+            font-weight: bold;
+            font-size: 16px;
+            color: #2c3e50;
+            margin-bottom: 10px;
+            padding-bottom: 5px;
+            border-bottom: 2px solid #007bff;
         }
     </style>
 </head>
@@ -154,50 +181,160 @@
             });
         }
 
-        // NEW: AI Response Formatting System
-        function formatAIResponse(message, userQuestion) {
-            const simpleQuestions = [
-                'how are you', 'hello', 'hi', 'what can you do',
-                'who are you', 'thanks', 'thank you', 'ok', 'okay',
-                'good morning', 'good afternoon', 'good evening'
-            ];
+        // Copy to clipboard function
+        function copyToClipboard(button) {
+            const messageBubble = button.closest('.message-bubble');
+            const text = messageBubble.innerText.replace('Copy', '').trim();
             
-            const complexIndicators = [
-                'explain', 'describe', 'analyze', 'steps', 'how to',
-                'process', 'method', 'detailed', 'guide', 'what is',
-                'tell me about', 'can you help', 'help me'
-            ];
-            
-            const userQuestionLower = userQuestion.toLowerCase();
-            
-            // Simple questions - direct answer
-            if (simpleQuestions.some(q => userQuestionLower.includes(q))) {
-                return message;
-            }
-            
-            // Complex questions - step by step
-            if (complexIndicators.some(indicator => userQuestionLower.includes(indicator)) || 
-                message.length > 300) {
-                
-                // Convert to step by step format
-                const sentences = message.split('. ').filter(s => s.trim().length > 20);
-                
-                if (sentences.length > 2) {
-                    let stepByStep = '';
-                    sentences.forEach((sentence, index) => {
-                        if (sentence.trim().length > 30) {
-                            stepByStep += `• ${sentence.trim()}.\n\n`;
-                        }
-                    });
-                    return stepByStep || message;
-                }
-            }
-            
-            // Default - return as is
-            return message;
+            navigator.clipboard.writeText(text).then(() => {
+                button.textContent = 'Copied!';
+                setTimeout(() => {
+                    button.textContent = 'Copy';
+                }, 2000);
+            });
         }
 
-        // MODIFIED: addMessage function with typing effect
+        // COMPLETE CONCEPT-BASED RESPONSE SYSTEM
+        function formatAIResponse(message, userQuestion) {
+            const lowerQuestion = userQuestion.toLowerCase();
+            
+            // Remove all * stars from the message first
+            let cleanMessage = message.replace(/\*/g, '');
+
+            // 1. DEFINITION QUESTIONS (What is, Define, Meaning)
+            if (lowerQuestion.includes('what is') || lowerQuestion.includes('define') || lowerQuestion.includes('meaning of')) {
+                return `<div class="concept-header">📚 Definition Overview</div>\n\n${formatAsStructured(cleanMessage)}`;
+            }
+
+            // 2. EXPLANATION QUESTIONS (Explain, How does, Describe)
+            if (lowerQuestion.includes('explain') || lowerQuestion.includes('how does') || lowerQuestion.includes('describe')) {
+                return `<div class="concept-header">🔍 Detailed Explanation</div>\n\n${formatAsSteps(cleanMessage)}`;
+            }
+
+            // 3. COMPARISON QUESTIONS (vs, difference between, compare)
+            if (lowerQuestion.includes(' vs ') || lowerQuestion.includes('difference between') || lowerQuestion.includes('compare')) {
+                return `<div class="concept-header">⚖️ Comparison Analysis</div>\n\n${formatAsComparison(cleanMessage)}`;
+            }
+
+            // 4. STEP-BY-STEP QUESTIONS (How to, steps, process)
+            if (lowerQuestion.includes('how to') || lowerQuestion.includes('steps') || lowerQuestion.includes('process')) {
+                return `<div class="concept-header">🔄 Step-by-Step Guide</div>\n\n${formatAsNumberedSteps(cleanMessage)}`;
+            }
+
+            // 5. LIST QUESTIONS (List, examples, types)
+            if (lowerQuestion.includes('list') || lowerQuestion.includes('examples') || lowerQuestion.includes('types of')) {
+                return `<div class="concept-header">📋 Itemized List</div>\n\n${formatAsList(cleanMessage)}`;
+            }
+
+            // 6. ANALYSIS QUESTIONS (Analyze, review, discuss)
+            if (lowerQuestion.includes('analyze') || lowerQuestion.includes('review') || lowerQuestion.includes('discuss')) {
+                return `<div class="concept-header">📊 In-Depth Analysis</div>\n\n${formatAsAnalysis(cleanMessage)}`;
+            }
+
+            // 7. QUESTION/CLARIFICATION RESPONSES
+            if (cleanMessage.includes('?') && (cleanMessage.includes('clarify') || cleanMessage.includes('specific') || cleanMessage.includes('context'))) {
+                return `<div class="concept-header">❓ Need Clarification</div>\n\n${formatAsList(cleanMessage)}`;
+            }
+
+            // 8. Default formatting for long responses
+            if (cleanMessage.length > 150) {
+                return `<div class="concept-header">📝 Comprehensive Answer</div>\n\n${formatAsStructured(cleanMessage)}`;
+            }
+
+            return cleanMessage;
+        }
+
+        // Helper functions for different formats
+        function formatAsStructured(text) {
+            const sentences = text.split(/\.\s+|\?\s+/).filter(s => s.trim().length > 20);
+            
+            if (sentences.length >= 2) {
+                let structured = '';
+                
+                if (sentences[0]) {
+                    structured += `📌 ${sentences[0].trim()}\n\n`;
+                }
+                
+                if (sentences[1]) {
+                    structured += `🔹 ${sentences[1].trim()}\n\n`;
+                }
+                
+                if (sentences.length > 2) {
+                    structured += `💡 ${sentences.slice(2).join('. ').trim()}`;
+                }
+                
+                return structured;
+            }
+            
+            return text;
+        }
+
+        function formatAsSteps(text) {
+            const sentences = text.split(/\.\s+/).filter(s => s.length > 20);
+            if (sentences.length >= 2) {
+                let steps = '';
+                sentences.forEach((sentence, index) => {
+                    steps += `${index + 1}. ${sentence}.\n\n`;
+                });
+                return steps;
+            }
+            return text;
+        }
+
+        function formatAsComparison(text) {
+            const sentences = text.split(/\.\s+/);
+            let comparison = '';
+            sentences.forEach((sentence, index) => {
+                if (index % 2 === 0) {
+                    comparison += `✅ ${sentence}.\n\n`;
+                } else {
+                    comparison += `❌ ${sentence}.\n\n`;
+                }
+            });
+            return comparison;
+        }
+
+        function formatAsNumberedSteps(text) {
+            const steps = text.split(/\.\s+|;\s+|\n/).filter(step => step.length > 10);
+            let numbered = '';
+            steps.forEach((step, index) => {
+                numbered += `${index + 1}. ${step.trim()}\n\n`;
+            });
+            return numbered;
+        }
+
+        function formatAsList(text) {
+            const items = text.split(/For example:|For instance:|such as|including|:|\n/).filter(item => item.trim().length > 10);
+            
+            if (items.length >= 2) {
+                let list = '';
+                items.forEach((item, index) => {
+                    const cleanItem = item.replace(/^[,\-\s]+/, '').trim();
+                    if (cleanItem && cleanItem.length > 15) {
+                        list += `• ${cleanItem}\n\n`;
+                    }
+                });
+                return list || text;
+            }
+            return text;
+        }
+
+        function formatAsAnalysis(text) {
+            const sentences = text.split(/\.\s+/);
+            let analysis = '';
+            sentences.forEach((sentence, index) => {
+                if (index === 0) {
+                    analysis += `📈 ${sentence}.\n\n`;
+                } else if (index === 1) {
+                    analysis += `📉 ${sentence}.\n\n`;
+                } else {
+                    analysis += `💡 ${sentence}.\n\n`;
+                }
+            });
+            return analysis;
+        }
+
+        // MODIFIED: addMessage function with typing effect and copy button
         async function addMessage(message, isUser = false, images = [], useTyping = false) {
             const chatContainer = document.getElementById('chatContainer');
             const messageDiv = document.createElement('div');
@@ -224,9 +361,9 @@
                     bubbleDiv.appendChild(textElement);
                 }
             } else {
-                // AI message - use typing effect
+                // AI message - use typing effect with copy button
                 if (message.startsWith('IMAGE_GENERATED:')) {
-                    // Handle generated images
+                    // Handle generated images - UNCHANGED
                     const imageData = message.replace('IMAGE_GENERATED:', '');
                     const imgElement = document.createElement('img');
                     imgElement.src = imageData;
@@ -245,11 +382,18 @@
                     textElement.textContent = 'Here is your generated image!';
                     bubbleDiv.appendChild(textElement);
                 } else {
+                    // Add copy button for AI text responses
+                    const copyBtn = document.createElement('button');
+                    copyBtn.className = 'copy-btn';
+                    copyBtn.textContent = 'Copy';
+                    copyBtn.onclick = function() { copyToClipboard(this); };
+                    bubbleDiv.appendChild(copyBtn);
+                    
                     // Text message - use typing effect
                     if (useTyping) {
                         await typeText(bubbleDiv, message, 15);
                     } else {
-                        bubbleDiv.textContent = message;
+                        bubbleDiv.innerHTML += message;
                     }
                 }
             }
@@ -306,7 +450,7 @@
                 typingIndicator.style.display = 'none';
                 
                 if (data.success) {
-                    // Use AI formatting system
+                    // Use CONCEPT-BASED formatting system
                     const formattedResponse = formatAIResponse(data.text, message);
                     await addMessage(formattedResponse, false, [], true);
                 } else {
