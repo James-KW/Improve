@@ -25,7 +25,6 @@ class ModelManager {
       // ALL Image Generation Models
       { name: "imagen-3.0-generate", type: "image_generate", priority: 1 },
       { name: "gemini-2.0-flash-preview-image-generation", type: "image_generate", priority: 2 },
-      { name: "veo-2.0-generate-001", type: "image_generate", priority: 3 },
       
       // ALL Live Models (Unlimited Quota)
       { name: "gemini-2.0-flash-live", type: "text", priority: 8 },
@@ -74,57 +73,157 @@ class ModelManager {
 
 const modelManager = new ModelManager();
 
-// Gemini Native Image Generation Function
-async function generateWithGemini(prompt) {
-  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-  
-  // Try different Gemini image models in order
-  const imageModels = [
-    "imagen-3.0-generate",
-    "gemini-2.0-flash-preview-image-generation", 
-    "veo-2.0-generate-001"
-  ];
-  
-  for (const modelName of imageModels) {
-    try {
-      console.log(`Trying image generation with: ${modelName}`);
-      const model = genAI.getGenerativeModel({ model: modelName });
-      
-      const result = await model.generateContent(prompt);
-      
-      // CORRECT way to get image from Gemini - handle different response formats
-      if (result.response) {
-        // Method 1: Check for inlineData in response
-        if (result.response.candidates && 
-            result.response.candidates[0] && 
-            result.response.candidates[0].content && 
-            result.response.candidates[0].content.parts && 
-            result.response.candidates[0].content.parts[0] && 
-            result.response.candidates[0].content.parts[0].inlineData) {
-          
-          const imageData = result.response.candidates[0].content.parts[0].inlineData.data;
-          console.log(`✅ Image generated successfully with ${modelName}`);
-          return `data:image/png;base64,${imageData}`;
-        }
-        
-        // Method 2: Check if response has direct image data
-        const responseText = result.response.text();
-        if (responseText.includes('base64') || responseText.startsWith('data:image')) {
-          console.log(`✅ Image generated successfully with ${modelName}`);
-          return responseText;
-        }
-        
-        // Method 3: If we get text but no image, maybe it's a description
-        console.log(`Model ${modelName} returned text instead of image:`, responseText.substring(0, 100));
+// Safety Check Function - Gemini যেসব prompt reject করে সেগুলো detect করে
+async function checkPromptSafety(prompt) {
+  try {
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash-lite" });
+    
+    const safetyCheckPrompt = `
+Analyze this image generation prompt for safety and appropriateness:
+"${prompt}"
+
+Consider these rejection reasons from Gemini:
+- Violence, weapons, harmful content
+- Hate speech, discrimination
+- Sexual explicit content
+- Copyright infringement (celebrities, characters)
+- Illegal activities
+- Personal identity misuse
+
+Respond ONLY with "SAFE" or "UNSAFE". No explanations.
+`;
+    
+    const result = await model.generateContent(safetyCheckPrompt);
+    const response = result.response.text().trim().toUpperCase();
+    
+    console.log(`🔍 Safety check: "${prompt.substring(0, 50)}..." → ${response}`);
+    return response === "SAFE";
+  } catch (error) {
+    console.log("❌ Safety check failed, defaulting to Hugging Face");
+    return false; // If safety check fails, use Hugging Face
+  }
+}
+
+// Hugging Face Image Generation (Fallback)
+async function generateWithHuggingFace(prompt) {
+  try {
+    console.log("🎨 Generating with Hugging Face FLUX.1...");
+    
+    if (!process.env.HUGGINGFACE_API_KEY) {
+      throw new Error("Hugging Face API Key not configured");
+    }
+
+    const response = await fetch(
+      "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell",
+      {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          inputs: prompt,
+          parameters: { width: 768, height: 768, num_inference_steps: 20 }
+        }),
       }
-      
-    } catch (error) {
-      console.log(`❌ ${modelName} failed:`, error.message);
-      // Continue to next model
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(`HuggingFace error: ${errorText.substring(0, 100)}`);
+    }
+
+    const imageBlob = await response.blob();
+    const arrayBuffer = await imageBlob.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+    const base64Image = `data:image/png;base64,${buffer.toString('base64')}`;
+    
+    console.log("✅ Hugging Face generation successful");
+    return base64Image;
+  } catch (error) {
+    console.error("❌ Hugging Face generation failed:", error.message);
+    throw error;
+  }
+}
+
+// Gemini Image Generation (Primary - Better Quality)
+async function generateWithGeminiModel(prompt, modelName) {
+  try {
+    const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+    const model = genAI.getGenerativeModel({ model: modelName });
+    
+    console.log(`🎨 Trying Gemini image generation with: ${modelName}`);
+    const result = await model.generateContent(prompt);
+    
+    // Process Gemini image response
+    if (result.response?.candidates?.[0]?.content?.parts?.[0]?.inlineData) {
+      const imageData = result.response.candidates[0].content.parts[0].inlineData.data;
+      console.log(`✅ Gemini ${modelName} generation successful`);
+      return `data:image/png;base64,${imageData}`;
+    }
+    
+    // Alternative response format
+    const responseText = result.response.text();
+    if (responseText.includes('base64') || responseText.startsWith('data:image')) {
+      console.log(`✅ Gemini ${modelName} generation successful (text format)`);
+      return responseText;
+    }
+    
+    throw new Error("No image data received from Gemini");
+  } catch (error) {
+    console.log(`❌ Gemini ${modelName} failed:`, error.message);
+    throw error;
+  }
+}
+
+// SMART ROTATION SYSTEM - Gemini First, Hugging Face Fallback
+async function generateImageSmart(prompt) {
+  console.log("🔄 Starting smart image generation...");
+  
+  // Step 1: Safety check for Gemini
+  const isSafeForGemini = await checkPromptSafety(prompt);
+  
+  if (isSafeForGemini) {
+    // Step 2: Try Gemini models FIRST (better quality)
+    console.log("✅ Prompt safe for Gemini - trying Gemini models...");
+    const geminiModels = ["imagen-3.0-generate", "gemini-2.0-flash-preview-image-generation"];
+    
+    for (const modelName of geminiModels) {
+      try {
+        const image = await generateWithGeminiModel(prompt, modelName);
+        if (image) {
+          console.log(`🎨 Success with Gemini: ${modelName}`);
+          return { 
+            image, 
+            source: 'gemini', 
+            model: modelName,
+            message: "Image generated with Gemini (High Quality) 🎨"
+          };
+        }
+      } catch (error) {
+        console.log(`❌ Gemini ${modelName} failed:`, error.message);
+        // Continue to next model
+      }
     }
   }
   
-  throw new Error("All Gemini image models failed. Please try a different prompt or try again later.");
+  // Step 3: If Gemini fails or unsafe, use Hugging Face
+  console.log("🔀 Using Hugging Face (Gemini failed or unsafe content)");
+  try {
+    const image = await generateWithHuggingFace(prompt);
+    console.log("✅ Success with Hugging Face");
+    return { 
+      image, 
+      source: 'huggingface', 
+      model: 'FLUX.1-schnell',
+      message: isSafeForGemini ? 
+        "Image generated with Hugging Face (Gemini was unavailable) 🔄" :
+        "Image generated with Hugging Face (Content safer this way) 🔀"
+    };
+  } catch (error) {
+    throw new Error(`All image generation failed: ${error.message}`);
+  }
 }
 
 // Smart Gemini API Call with Model Rotation
@@ -217,10 +316,10 @@ module.exports = async (req, res) => {
       });
     }
 
-    // AI-Enhanced Image Generation with Gemini
+    // AI-Enhanced Image Generation with SMART ROTATION
     if (mode === 'generate' && message && mediaType === 'image') {
       try {
-        console.log("Starting AI-enhanced image generation...");
+        console.log("Starting AI-enhanced image generation with SMART ROTATION...");
         
         let finalPrompt = message;
         
@@ -264,13 +363,15 @@ Return ONLY the improved prompt, nothing else.
           console.log("Enhanced prompt:", finalPrompt);
         }
 
-        // Generate image with Gemini native models
-        console.log("Generating image with Gemini native models...");
-        const generatedImage = await generateWithGemini(finalPrompt);
+        // Generate image with SMART ROTATION SYSTEM
+        console.log("🔄 Generating image with SMART ROTATION SYSTEM...");
+        const generationResult = await generateImageSmart(finalPrompt);
         
         return res.status(200).json({
-          text: `IMAGE_GENERATED:${generatedImage}`,
-          message: `Image generated successfully using Gemini!`,
+          text: `IMAGE_GENERATED:${generationResult.image}`,
+          message: generationResult.message,
+          source: generationResult.source,
+          model: generationResult.model,
           mode: 'generate',
           mediaType: 'image',
           success: true
