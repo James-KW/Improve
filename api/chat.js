@@ -71,70 +71,38 @@ class ModelManager {
 
 const modelManager = new ModelManager();
 
-// FLUX.1 Model - Better Quality Image Generation
-async function generateWithFlux(prompt) {
-  try {
-    const response = await fetch(
-      "https://api-inference.huggingface.co/models/black-forest-labs/FLUX.1-schnell",
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          inputs: prompt,
-          parameters: { width: 768, height: 768, num_inference_steps: 20 }
-        }),
+// Gemini Native Image Generation Function
+async function generateWithGemini(prompt) {
+  const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+  
+  // Try different Gemini image models in order
+  const imageModels = [
+    "imagen-3.0-generate",
+    "gemini-2.0-flash-preview-image-generation", 
+    "veo-2.0-generate-001"
+  ];
+  
+  for (const modelName of imageModels) {
+    try {
+      console.log(`Trying image generation with: ${modelName}`);
+      const model = genAI.getGenerativeModel({ model: modelName });
+      
+      const result = await model.generateContent(prompt);
+      const response = await result.response;
+      
+      // Handle different response formats from Gemini image models
+      if (response.candidates && response.candidates[0].content.parts[0].inlineData) {
+        const imageData = response.candidates[0].content.parts[0].inlineData.data;
+        console.log(`✅ Image generated successfully with ${modelName}`);
+        return `data:image/png;base64,${imageData}`;
       }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`FLUX.1 error: ${errorText.substring(0, 100)}`);
+    } catch (error) {
+      console.log(`❌ ${modelName} failed:`, error.message);
+      // Continue to next model
     }
-
-    const imageBlob = await response.blob();
-    const arrayBuffer = await imageBlob.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    return `data:image/png;base64,${buffer.toString('base64')}`;
-  } catch (error) {
-    console.error("FLUX.1 Error:", error);
-    return await generateWithStableDiffusion(prompt);
   }
-}
-
-// Stable Diffusion - Backup Model
-async function generateWithStableDiffusion(prompt) {
-  try {
-    const response = await fetch(
-      "https://api-inference.huggingface.co/models/stabilityai/stable-diffusion-xl-base-1.0",
-      {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${process.env.HUGGINGFACE_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          inputs: prompt,
-          parameters: { width: 512, height: 512 }
-        }),
-      }
-    );
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      throw new Error(`Stable Diffusion error: ${errorText.substring(0, 100)}`);
-    }
-
-    const imageBlob = await response.blob();
-    const arrayBuffer = await imageBlob.arrayBuffer();
-    const buffer = Buffer.from(arrayBuffer);
-    return `data:image/png;base64,${buffer.toString('base64')}`;
-  } catch (error) {
-    console.error("Stable Diffusion Error:", error);
-    throw error;
-  }
+  
+  throw new Error("All Gemini image models failed");
 }
 
 // Smart Gemini API Call with Model Rotation
@@ -266,13 +234,13 @@ Return ONLY the improved prompt, nothing else.
           console.log("Enhanced prompt:", finalPrompt);
         }
 
-        // Generate image with the AI-enhanced prompt
-        console.log("Generating image with enhanced prompt...");
-        const generatedImage = await generateWithFlux(finalPrompt);
+        // Generate image with Gemini native models
+        console.log("Generating image with Gemini native models...");
+        const generatedImage = await generateWithGemini(finalPrompt);
         
         return res.status(200).json({
           text: `IMAGE_GENERATED:${generatedImage}`,
-          message: `Image generated based on your request!`,
+          message: `Image generated using Gemini!`,
           mode: 'generate',
           mediaType: 'image',
           success: true
