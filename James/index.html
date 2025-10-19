@@ -12,7 +12,7 @@
         .message { margin-bottom: 15px; display: flex; }
         .user-message { justify-content: flex-end; }
         .ai-message { justify-content: flex-start; }
-        .message-bubble { max-width: 80%; padding: 10px 15px; border-radius: 15px; }
+        .message-bubble { max-width: 80%; padding: 10px 15px; border-radius: 15px; white-space: pre-line; }
         .user-message .message-bubble { background: #007bff; color: white; }
         .ai-message .message-bubble { background: white; border: 1px solid #ddd; }
         .input-container { padding: 15px; background: white; border-top: 1px solid #ddd; display: flex; gap: 10px; }
@@ -154,64 +154,138 @@
             });
         }
 
-        // SMART RESPONSE FORMATTING SYSTEM
+        // COMPLETE CONCEPT-BASED RESPONSE SYSTEM
         function formatAIResponse(message, userQuestion) {
-            const lowerMessage = message.toLowerCase();
             const lowerQuestion = userQuestion.toLowerCase();
-            
-            // যদি answer ইতিমধ্যে formatted থাকে
-            if (lowerMessage.includes('**') || 
-                lowerMessage.includes('•') || 
-                lowerMessage.includes('📌') ||
-                lowerMessage.includes('🔹') ||
-                lowerMessage.includes('📝') ||
-                lowerMessage.includes('🎯') ||
-                (lowerMessage.includes('-') && message.length > 200)) {
-                return message;
+            const lowerMessage = message.toLowerCase();
+
+            // 1. DEFINITION QUESTIONS (What is, Define, Meaning)
+            if (lowerQuestion.includes('what is') || lowerQuestion.includes('define') || lowerQuestion.includes('meaning of')) {
+                return `📚 Definition Overview\n\n📌 ${getFirstSentence(message)}\n\n🔹 ${getSecondSentence(message)}\n\n💡 ${getRemainingSentences(message)}`;
             }
-            
-            const simpleQuestions = [
-                'how are you', 'hello', 'hi', 'what can you do',
-                'who are you', 'thanks', 'thank you', 'ok', 'okay',
-                'good morning', 'good afternoon', 'good evening', 'hey'
-            ];
-            
-            // Simple questions - direct answer
-            if (simpleQuestions.some(q => lowerQuestion.includes(q))) {
-                return message;
+
+            // 2. EXPLANATION QUESTIONS (Explain, How does, Describe)
+            if (lowerQuestion.includes('explain') || lowerQuestion.includes('how does') || lowerQuestion.includes('describe')) {
+                return `🔍 Detailed Explanation\n\n${formatAsSteps(message)}`;
             }
-            
-            // যদি answer বড় হয় এবং structure করা যায়
-            if (message.length > 150) {
-                const sentences = message.split(/\.\s+/).filter(s => s.trim().length > 30);
-                
-                if (sentences.length >= 3) {
-                    let formattedResponse = '';
-                    
-                    if (sentences.length >= 1) {
-                        formattedResponse += `📌 ${sentences[0]}.`;
-                    }
-                    if (sentences.length >= 2) {
-                        formattedResponse += `\n\n🔹 ${sentences[1]}.`;
-                    }
-                    if (sentences.length >= 3) {
-                        formattedResponse += `\n\n💡 ${sentences.slice(2).join('. ')}`;
-                    }
-                    
-                    return formattedResponse;
-                }
+
+            // 3. COMPARISON QUESTIONS (vs, difference between, compare)
+            if (lowerQuestion.includes(' vs ') || lowerQuestion.includes('difference between') || lowerQuestion.includes('compare')) {
+                return `⚖️ Comparison Analysis\n\n${formatAsComparison(message)}`;
             }
-            
-            // Medium length answers - simple formatting
-            if (message.length > 80) {
-                const parts = message.split(/,|\s+and\s+/).filter(p => p.trim().length > 20);
-                if (parts.length >= 2) {
-                    return `📌 ${parts[0]}\n\n🔹 ${parts.slice(1).join(' ')}`;
-                }
+
+            // 4. STEP-BY-STEP QUESTIONS (How to, steps, process)
+            if (lowerQuestion.includes('how to') || lowerQuestion.includes('steps') || lowerQuestion.includes('process')) {
+                return `🔄 Step-by-Step Guide\n\n${formatAsNumberedSteps(message)}`;
             }
-            
-            // সাধারণ answer এর জন্য
+
+            // 5. LIST QUESTIONS (List, examples, types)
+            if (lowerQuestion.includes('list') || lowerQuestion.includes('examples') || lowerQuestion.includes('types of')) {
+                return `📋 Itemized List\n\n${formatAsList(message)}`;
+            }
+
+            // 6. ANALYSIS QUESTIONS (Analyze, review, discuss)
+            if (lowerQuestion.includes('analyze') || lowerQuestion.includes('review') || lowerQuestion.includes('discuss')) {
+                return `📊 In-Depth Analysis\n\n${formatAsAnalysis(message)}`;
+            }
+
+            // 7. Default formatting for long responses
+            if (message.length > 200 && !lowerMessage.includes('**')) {
+                return `📝 Comprehensive Answer\n\n${formatAsStructured(message)}`;
+            }
+
             return message;
+        }
+
+        // Helper functions for different formats
+        function getFirstSentence(text) {
+            const sentences = text.split(/\.\s+/);
+            return sentences[0] ? sentences[0] + '.' : text;
+        }
+
+        function getSecondSentence(text) {
+            const sentences = text.split(/\.\s+/);
+            return sentences[1] ? sentences[1] + '.' : '';
+        }
+
+        function getRemainingSentences(text) {
+            const sentences = text.split(/\.\s+/);
+            return sentences.slice(2).join('. ') || text;
+        }
+
+        function formatAsSteps(text) {
+            const sentences = text.split(/\.\s+/).filter(s => s.length > 20);
+            if (sentences.length >= 2) {
+                let steps = '';
+                sentences.forEach((sentence, index) => {
+                    steps += `${index + 1}. ${sentence}.\n\n`;
+                });
+                return steps;
+            }
+            return text;
+        }
+
+        function formatAsComparison(text) {
+            const sentences = text.split(/\.\s+/);
+            let comparison = '';
+            sentences.forEach((sentence, index) => {
+                if (index % 2 === 0) {
+                    comparison += `✅ ${sentence}.\n\n`;
+                } else {
+                    comparison += `❌ ${sentence}.\n\n`;
+                }
+            });
+            return comparison;
+        }
+
+        function formatAsNumberedSteps(text) {
+            const steps = text.split(/\.\s+|;\s+|\n/).filter(step => step.length > 10);
+            let numbered = '';
+            steps.forEach((step, index) => {
+                numbered += `${index + 1}. ${step.trim()}\n\n`;
+            });
+            return numbered;
+        }
+
+        function formatAsList(text) {
+            const items = text.split(/\.\s+|\,\s+|\n/).filter(item => item.length > 15);
+            let list = '';
+            items.forEach((item, index) => {
+                list += `${index + 1}. ${item.trim()}\n\n`;
+            });
+            return list;
+        }
+
+        function formatAsAnalysis(text) {
+            const sentences = text.split(/\.\s+/);
+            let analysis = '';
+            sentences.forEach((sentence, index) => {
+                if (index === 0) {
+                    analysis += `📈 ${sentence}.\n\n`;
+                } else if (index === 1) {
+                    analysis += `📉 ${sentence}.\n\n`;
+                } else {
+                    analysis += `💡 ${sentence}.\n\n`;
+                }
+            });
+            return analysis;
+        }
+
+        function formatAsStructured(text) {
+            const sentences = text.split(/\.\s+/).filter(s => s.length > 25);
+            let structured = '';
+            
+            if (sentences.length >= 1) {
+                structured += `📌 ${sentences[0]}.\n\n`;
+            }
+            if (sentences.length >= 2) {
+                structured += `🔹 ${sentences[1]}.\n\n`;
+            }
+            if (sentences.length >= 3) {
+                structured += `🌟 ${sentences.slice(2).join('. ')}`;
+            }
+            
+            return structured;
         }
 
         // MODIFIED: addMessage function with typing effect
@@ -323,7 +397,7 @@
                 typingIndicator.style.display = 'none';
                 
                 if (data.success) {
-                    // Use SMART formatting system
+                    // Use CONCEPT-BASED formatting system
                     const formattedResponse = formatAIResponse(data.text, message);
                     await addMessage(formattedResponse, false, [], true);
                 } else {
