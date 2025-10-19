@@ -9,35 +9,38 @@ function base64ToGenerativePart(base64String, mimeType) {
   };
 }
 
-// Smart Model Rotation System
+// Smart Model Rotation System - ALL MODELS INCLUDED
 class ModelManager {
   constructor() {
     this.models = [
-      // Primary Text Models (High Quota)
+      // ALL Text Models (For Chat & Image Analysis)
       { name: "gemini-2.0-flash-lite", type: "text", priority: 1 },
       { name: "gemini-2.0-flash", type: "text", priority: 2 },
       { name: "gemini-2.5-flash", type: "text", priority: 3 },
-      
-      // Experimental & Specialized
       { name: "gemini-2.0-flash-exp", type: "text", priority: 4 },
       { name: "gemini-2.5-pro", type: "text", priority: 5 },
       { name: "gemini-2.5-flash-lite", type: "text", priority: 6 },
       { name: "learnlm-2.0-flash-experimental", type: "text", priority: 7 },
       
-      // Image Generation Models
-      { name: "imagen-3.0-generate", type: "image", priority: 1 },
-      { name: "gemini-2.0-flash-preview-image-generation", type: "multimodal", priority: 2 },
+      // ALL Image Generation Models
+      { name: "imagen-3.0-generate", type: "image_generate", priority: 1 },
+      { name: "gemini-2.0-flash-preview-image-generation", type: "image_generate", priority: 2 },
+      { name: "veo-2.0-generate-001", type: "image_generate", priority: 3 },
       
-      // Live Models (Unlimited Quota)
+      // ALL Live Models (Unlimited Quota)
       { name: "gemini-2.0-flash-live", type: "text", priority: 8 },
       { name: "gemini-2.5-flash-live", type: "text", priority: 9 },
+      { name: "gemini-2.5-flash-native-audio-dialog", type: "text", priority: 10 },
       
-      // Gemma Models (Backup)
-      { name: "gemma-3-27b", type: "text", priority: 10 },
-      { name: "gemma-3-12b", type: "text", priority: 11 },
-      { name: "gemma-3-4b", type: "text", priority: 12 },
-      { name: "gemma-3-2b", type: "text", priority: 13 },
-      { name: "gemma-3-1b", type: "text", priority: 14 }
+      // ALL Gemma Models (Backup)
+      { name: "gemma-3-27b", type: "text", priority: 11 },
+      { name: "gemma-3-12b", type: "text", priority: 12 },
+      { name: "gemma-3-4b", type: "text", priority: 13 },
+      { name: "gemma-3-2b", type: "text", priority: 14 },
+      { name: "gemma-3-1b", type: "text", priority: 15 },
+      
+      // Other Models
+      { name: "gemini-robotics-er-1.5-preview", type: "text", priority: 16 }
     ];
     
     this.failedModels = new Set();
@@ -88,38 +91,62 @@ async function generateWithGemini(prompt) {
       const model = genAI.getGenerativeModel({ model: modelName });
       
       const result = await model.generateContent(prompt);
-      const response = await result.response;
       
-      // Handle different response formats from Gemini image models
-      if (response.candidates && response.candidates[0].content.parts[0].inlineData) {
-        const imageData = response.candidates[0].content.parts[0].inlineData.data;
-        console.log(`✅ Image generated successfully with ${modelName}`);
-        return `data:image/png;base64,${imageData}`;
+      // CORRECT way to get image from Gemini - handle different response formats
+      if (result.response) {
+        // Method 1: Check for inlineData in response
+        if (result.response.candidates && 
+            result.response.candidates[0] && 
+            result.response.candidates[0].content && 
+            result.response.candidates[0].content.parts && 
+            result.response.candidates[0].content.parts[0] && 
+            result.response.candidates[0].content.parts[0].inlineData) {
+          
+          const imageData = result.response.candidates[0].content.parts[0].inlineData.data;
+          console.log(`✅ Image generated successfully with ${modelName}`);
+          return `data:image/png;base64,${imageData}`;
+        }
+        
+        // Method 2: Check if response has direct image data
+        const responseText = result.response.text();
+        if (responseText.includes('base64') || responseText.startsWith('data:image')) {
+          console.log(`✅ Image generated successfully with ${modelName}`);
+          return responseText;
+        }
+        
+        // Method 3: If we get text but no image, maybe it's a description
+        console.log(`Model ${modelName} returned text instead of image:`, responseText.substring(0, 100));
       }
+      
     } catch (error) {
       console.log(`❌ ${modelName} failed:`, error.message);
       // Continue to next model
     }
   }
   
-  throw new Error("All Gemini image models failed");
+  throw new Error("All Gemini image models failed. Please try a different prompt or try again later.");
 }
 
 // Smart Gemini API Call with Model Rotation
-async function callGeminiAPI(prompt, images = null, mode = "chat") {
+async function callGeminiAPI(prompt, images = null, mode = "chat", mediaType = "image") {
   const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
   let lastError = null;
   
-  // Determine model type based on mode and content
+  // CORRECT Model Type Selection
   let modelType = "text";
-  if (mode === "generate") modelType = "image";
-  if (images && images.length > 0) modelType = "multimodal";
+  if (mode === "generate" && mediaType === "image") {
+    modelType = "image_generate";  // ONLY for image generation
+  } else {
+    modelType = "text";  // Image analysis & chat use TEXT models
+  }
+  
+  console.log(`Selected model type: ${modelType} for mode: ${mode}, mediaType: ${mediaType}`);
   
   // Try up to 5 different models
   for (let attempt = 0; attempt < 5; attempt++) {
     const modelInfo = modelManager.getBestModel(modelType);
     if (!modelInfo) {
-      throw new Error("No available models");
+      throw new Error("No available models for this task type");
     }
     
     const modelName = modelInfo.name;
@@ -129,19 +156,22 @@ async function callGeminiAPI(prompt, images = null, mode = "chat") {
       const model = genAI.getGenerativeModel({ model: modelName });
       
       let result;
-      if (images && images.length > 0) {
+      if (images && images.length > 0 && modelType === "text") {
+        // Image analysis with text models
         const imageParts = images.map(imgData => {
           const mimeType = imgData.split(';')[0].split(':')[1];
           return base64ToGenerativePart(imgData, mimeType);
         });
         result = await model.generateContent([prompt, ...imageParts]);
       } else {
+        // Text generation or image generation
         result = await model.generateContent(prompt);
       }
       
       const response = await result.response;
       modelManager.markModelSuccess(modelName);
       console.log(`✅ Success with model: ${modelName}`);
+      
       return response.text();
       
     } catch (error) {
@@ -210,7 +240,7 @@ Create a detailed, enhanced prompt for image generation that:
 
 Return ONLY the enhanced prompt for image generation, nothing else.
 `;
-          const imageEnhancedPrompt = await callGeminiAPI(imageAnalysisPrompt, images, "analyze");
+          const imageEnhancedPrompt = await callGeminiAPI(imageAnalysisPrompt, images, "analyze", "image");
           finalPrompt = imageEnhancedPrompt.trim();
           console.log("Image-enhanced prompt:", finalPrompt);
         } else {
@@ -229,7 +259,7 @@ Create an improved, detailed prompt for image generation that:
 
 Return ONLY the improved prompt, nothing else.
 `;
-          const enhancedPrompt = await callGeminiAPI(enhancementPrompt, null, "chat");
+          const enhancedPrompt = await callGeminiAPI(enhancementPrompt, null, "chat", "image");
           finalPrompt = enhancedPrompt.trim();
           console.log("Enhanced prompt:", finalPrompt);
         }
@@ -240,7 +270,7 @@ Return ONLY the improved prompt, nothing else.
         
         return res.status(200).json({
           text: `IMAGE_GENERATED:${generatedImage}`,
-          message: `Image generated using Gemini!`,
+          message: `Image generated successfully using Gemini!`,
           mode: 'generate',
           mediaType: 'image',
           success: true
@@ -249,7 +279,7 @@ Return ONLY the improved prompt, nothing else.
       } catch (error) {
         console.error("AI-enhanced generation failed:", error);
         return res.status(200).json({
-          text: `❌ Image generation failed: ${error.message}. Please try a different description.`,
+          text: `❌ Image generation failed: ${error.message}`,
           mode: 'generate',
           success: false
         });
@@ -273,7 +303,7 @@ Return ONLY the improved prompt, nothing else.
         }
         
         console.log("Starting Gemini image analysis...");
-        const analysis = await callGeminiAPI(prompt, images, "analyze");
+        const analysis = await callGeminiAPI(prompt, images, "analyze", "image");
         console.log("Image analysis completed successfully");
         
         return res.status(200).json({
@@ -296,7 +326,7 @@ Return ONLY the improved prompt, nothing else.
     else if (message) {
       try {
         console.log("Starting Gemini chat...");
-        const response = await callGeminiAPI(message, null, "chat");
+        const response = await callGeminiAPI(message, null, "chat", "text");
         console.log("Chat completed successfully");
         
         return res.status(200).json({
