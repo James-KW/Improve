@@ -9,7 +9,113 @@ function base64ToGenerativePart(base64String, mimeType) {
     };
 }
 
-// Hugging Face - Stable Diffusion (FOREVER FREE)
+// Available Gemini Models (Priority Order)
+const GEMINI_MODELS = [
+    "gemini-2.5-flash-exp",    // Highest priority - Fast & Efficient
+    "gemini-2.5-pro-exp",      // Second priority - High Quality
+    "gemini-2.0-flash-exp",    // Fallback 1
+    "gemini-1.5-flash"         // Fallback 2
+];
+
+// Grok API for Backup when all Gemini models fail
+async function chatWithGrok(message) {
+    try {
+        const response = await fetch(
+            "https://api.x.ai/v1/chat/completions",
+            {
+                method: "POST",
+                headers: {
+                    "Authorization": `Bearer ${process.env.GROK_API_KEY}`,
+                    "Content-Type": "application/json",
+                },
+                body: JSON.stringify({
+                    messages: [
+                        {
+                            role: "user",
+                            content: message
+                        }
+                    ],
+                    model: "grok-beta",
+                    stream: false,
+                    temperature: 0.7
+                }),
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`Grok API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+        return {
+            text: data.choices[0].message.content,
+            modelUsed: 'grok-beta'
+        };
+    } catch (error) {
+        console.error("Grok Error:", error);
+        throw error;
+    }
+}
+
+// Gemini with Multiple Model Fallback
+async function chatWithGemini(message, images = []) {
+    let lastError = null;
+    
+    // Try all Gemini models in order
+    for (const modelName of GEMINI_MODELS) {
+        try {
+            console.log(`Trying Gemini model: ${modelName}`);
+            
+            const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+            const model = genAI.getGenerativeModel({ 
+                model: modelName
+            });
+
+            let contents = [];
+            
+            if (images.length > 0) {
+                // Image analysis mode
+                const imageParts = images.map(imgData => {
+                    const mimeType = imgData.split(';')[0].split(':')[1];
+                    return base64ToGenerativePart(imgData, mimeType);
+                });
+                contents = [message, ...imageParts];
+            } else {
+                // Text chat mode
+                contents = [message];
+            }
+
+            const result = await model.generateContent(contents);
+            const response = await result.response;
+            
+            console.log(`Success with model: ${modelName}`);
+            return {
+                text: response.text(),
+                modelUsed: modelName
+            };
+            
+        } catch (error) {
+            console.error(`Gemini model ${modelName} failed:`, error.message);
+            lastError = error;
+            
+            // Check if it's a quota exceeded or model not found error - try next model
+            if (error.message.includes('quota') || error.message.includes('limit') || 
+                error.message.includes('429') || error.message.includes('not found') ||
+                error.message.includes('unavailable')) {
+                console.log(`Model ${modelName} unavailable, trying next...`);
+                continue; // Try next model
+            }
+            
+            // For other errors, throw immediately
+            throw error;
+        }
+    }
+    
+    // All Gemini models failed
+    throw new Error('ALL_GEMINI_MODELS_FAILED');
+}
+
+// Hugging Face - Stable Diffusion (Image Generation)
 async function generateWithStableDiffusion(prompt) {
     try {
         const response = await fetch(
@@ -22,27 +128,35 @@ async function generateWithStableDiffusion(prompt) {
                 },
                 body: JSON.stringify({ 
                     inputs: prompt,
-                    parameters: { width: 512, height: 512 }
+                    parameters: { 
+                        width: 512, 
+                        height: 512,
+                        num_inference_steps: 20
+                    }
                 }),
             }
         );
 
+        if (response.status === 503) {
+            throw new Error("Model is loading, please try again in 20-30 seconds");
+        }
+
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`Stable Diffusion error: ${errorData.error || response.status}`);
+            const errorData = await response.text();
+            throw new Error(`Hugging Face API error: ${response.status}`);
         }
 
         const imageBlob = await response.blob();
         const arrayBuffer = await imageBlob.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
-        return `data:image/png;base64,${buffer.toString('base64')}`;
+        return `data:image/jpeg;base64,${buffer.toString('base64')}`;
     } catch (error) {
         console.error("Stable Diffusion Error:", error);
         throw error;
     }
 }
 
-// Hugging Face - Flux.1 (Better Quality - FREE)
+// Hugging Face - FLUX.1 (Better Quality)
 async function generateWithFlux(prompt) {
     try {
         const response = await fetch(
@@ -55,31 +169,38 @@ async function generateWithFlux(prompt) {
                 },
                 body: JSON.stringify({ 
                     inputs: prompt,
-                    parameters: { width: 512, height: 512 }
+                    parameters: { 
+                        width: 512, 
+                        height: 512,
+                        guidance_scale: 7.5
+                    }
                 }),
             }
         );
 
+        if (response.status === 503) {
+            throw new Error("FLUX model is loading, please try again in 30 seconds");
+        }
+
         if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`FLUX.1 error: ${errorData.error || response.status}`);
+            throw new Error(`FLUX.1 error: ${response.status}`);
         }
 
         const imageBlob = await response.blob();
         const arrayBuffer = await imageBlob.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
-        return `data:image/png;base64,${buffer.toString('base64')}`;
+        return `data:image/jpeg;base64,${buffer.toString('base64')}`;
     } catch (error) {
         console.error("FLUX.1 Error:", error);
         throw error;
     }
 }
 
-// FREE Video Generation
-async function generateWithStableVideo(prompt) {
+// Simple & Fast Model (Fallback)
+async function generateWithSimpleModel(prompt) {
     try {
         const response = await fetch(
-            "https://api-inference.huggingface.co/models/stabilityai/stable-video-diffusion-img2vid",
+            "https://api-inference.huggingface.co/models/runwayml/stable-diffusion-v1-5",
             {
                 method: "POST",
                 headers: {
@@ -87,23 +208,26 @@ async function generateWithStableVideo(prompt) {
                     "Content-Type": "application/json",
                 },
                 body: JSON.stringify({ 
-                    inputs: prompt,
-                    parameters: { num_frames: 25, fps: 6 }
+                    inputs: prompt
                 }),
             }
         );
 
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(`Stable Video error: ${errorData.error || response.status}`);
+        if (response.status === 503) {
+            await new Promise(resolve => setTimeout(resolve, 10000));
+            return generateWithSimpleModel(prompt);
         }
 
-        const videoBlob = await response.blob();
-        const arrayBuffer = await videoBlob.arrayBuffer();
+        if (!response.ok) {
+            throw new Error(`API error: ${response.status}`);
+        }
+
+        const imageBlob = await response.blob();
+        const arrayBuffer = await imageBlob.arrayBuffer();
         const buffer = Buffer.from(arrayBuffer);
-        return `data:video/mp4;base64,${buffer.toString('base64')}`;
+        return `data:image/png;base64,${buffer.toString('base64')}`;
     } catch (error) {
-        console.error("Stable Video Error:", error);
+        console.error("Simple Model Error:", error);
         throw error;
     }
 }
@@ -121,28 +245,29 @@ module.exports = async (req, res) => {
         
         console.log("Request:", { mode, mediaType, imageModel, message: message?.substring(0, 50) });
 
-        // Image Generation with Model Selection
+        // Image Generation with Hugging Face
         if (mode === 'generate' && message && mediaType === 'image') {
             try {
-                console.log(`Starting ${imageModel} image generation...`);
+                console.log(`Starting ${imageModel} image generation with Hugging Face...`);
                 let generatedImage;
 
-                if (imageModel === 'flux') {
-                    // Try FLUX.1 first (better quality)
-                    try {
+                // Try multiple models with fallback
+                try {
+                    if (imageModel === 'flux') {
                         generatedImage = await generateWithFlux(message);
-                    } catch (fluxError) {
-                        console.log("FLUX.1 failed, trying Stable Diffusion...");
+                    } else if (imageModel === 'stable') {
                         generatedImage = await generateWithStableDiffusion(message);
+                    } else {
+                        generatedImage = await generateWithSimpleModel(message);
                     }
-                } else {
-                    // Direct Stable Diffusion
-                    generatedImage = await generateWithStableDiffusion(message);
+                } catch (primaryError) {
+                    console.log("Primary model failed, trying fallback...");
+                    generatedImage = await generateWithSimpleModel(message);
                 }
 
                 return res.status(200).json({
                     text: `IMAGE_GENERATED:${generatedImage}`,
-                    message: `Image generated with ${imageModel.toUpperCase()}! (FREE)`,
+                    message: `Image generated with ${imageModel.toUpperCase()}! (Hugging Face)`,
                     mode: 'generate',
                     mediaType: 'image',
                     modelUsed: imageModel,
@@ -158,53 +283,43 @@ module.exports = async (req, res) => {
             }
         }
 
-        // FREE Video Generation
-        if (mode === 'generate' && message && mediaType === 'video') {
-            try {
-                console.log("Starting FREE Video Generation...");
-                const videoResult = await generateWithStableVideo(message);
-                
-                return res.status(200).json({
-                    text: `VIDEO_GENERATED:${videoResult}`,
-                    message: "Video generated successfully! (FREE)",
-                    mode: 'generate',
-                    mediaType: 'video',
-                    success: true
-                });
-            } catch (error) {
-                console.error("FREE Video generation failed:", error);
-                return res.status(200).json({
-                    text: `❌ Video generation failed: ${error.message}. Daily limit may be reached - try tomorrow!`,
-                    mode: 'generate',
-                    success: false
-                });
-            }
-        }
-
-        // Image Analysis with Gemini
+        // Image Analysis with Gemini 2.5 Models (Primary) -> Grok (Backup)
         else if (images && images.length > 0) {
             try {
-                const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-                const imageParts = images.map(imgData => {
-                    const mimeType = imgData.split(';')[0].split(':')[1];
-                    return base64ToGenerativePart(imgData, mimeType);
-                });
-
+                console.log("Starting image analysis with Gemini 2.5 models...");
                 const prompt = message 
                     ? `Analyze this image and: ${message}`
-                    : "Describe this image in detail.";
-
-                const result = await model.generateContent([prompt, ...imageParts]);
-                const response = await result.response;
+                    : "Describe this image in detail including subjects, background, colors, lighting, and overall impression.";
+                
+                const result = await chatWithGemini(prompt, images);
                 
                 return res.status(200).json({ 
                     success: true,
-                    text: response.text(),
-                    mode: 'analyze'
+                    text: result.text,
+                    mode: 'analyze',
+                    modelUsed: result.modelUsed
                 });
             } catch (error) {
+                if (error.message === 'ALL_GEMINI_MODELS_FAILED') {
+                    console.log("All Gemini models failed, switching to Grok for image analysis...");
+                    try {
+                        const grokResult = await chatWithGrok(
+                            `Analyze this image description request: "${message}". I cannot see the image but based on the user's request, provide helpful analysis guidance.`
+                        );
+                        return res.status(200).json({ 
+                            success: true,
+                            text: `⚠️ All Gemini models unavailable. Using Grok instead:\n\n${grokResult.text}`,
+                            mode: 'analyze',
+                            modelUsed: grokResult.modelUsed
+                        });
+                    } catch (grokError) {
+                        return res.status(200).json({
+                            success: false,
+                            text: `❌ All AI models failed for image analysis. Please try again later.`
+                        });
+                    }
+                }
+                
                 console.error("Image analysis failed:", error);
                 return res.status(200).json({
                     success: false,
@@ -213,21 +328,37 @@ module.exports = async (req, res) => {
             }
         }
         
-        // Text Chat with Gemini
+        // Text Chat - Gemini 2.5 Models (Primary) -> Grok (Backup)
         else if (message) {
             try {
-                const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-                const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-                
-                const result = await model.generateContent(message);
-                const response = await result.response;
+                console.log("Starting chat with Gemini 2.5 models...");
+                const result = await chatWithGemini(message);
                 
                 return res.status(200).json({ 
                     success: true,
-                    text: response.text(),
-                    mode: 'chat'
+                    text: result.text,
+                    mode: 'chat',
+                    modelUsed: result.modelUsed
                 });
             } catch (error) {
+                if (error.message === 'ALL_GEMINI_MODELS_FAILED') {
+                    console.log("All Gemini models failed, switching to Grok for chat...");
+                    try {
+                        const grokResult = await chatWithGrok(message);
+                        return res.status(200).json({ 
+                            success: true,
+                            text: `⚠️ All Gemini models unavailable. Using Grok instead:\n\n${grokResult.text}`,
+                            mode: 'chat',
+                            modelUsed: grokResult.modelUsed
+                        });
+                    } catch (grokError) {
+                        return res.status(200).json({
+                            success: false,
+                            text: `❌ All AI models failed. Please try again later.`
+                        });
+                    }
+                }
+                
                 console.error("Chat failed:", error);
                 return res.status(200).json({
                     success: false,
