@@ -12,7 +12,7 @@
         .message { margin-bottom: 15px; display: flex; }
         .user-message { justify-content: flex-end; }
         .ai-message { justify-content: flex-start; }
-        .message-bubble { max-width: 80%; padding: 10px 15px; border-radius: 15px; white-space: pre-line; }
+        .message-bubble { max-width: 80%; padding: 10px 15px; border-radius: 15px; }
         .user-message .message-bubble { background: #007bff; color: white; }
         .ai-message .message-bubble { background: white; border: 1px solid #ddd; }
         .input-container { padding: 15px; background: white; border-top: 1px solid #ddd; display: flex; gap: 10px; }
@@ -154,138 +154,47 @@
             });
         }
 
-        // COMPLETE CONCEPT-BASED RESPONSE SYSTEM
+        // NEW: AI Response Formatting System
         function formatAIResponse(message, userQuestion) {
-            const lowerQuestion = userQuestion.toLowerCase();
-            const lowerMessage = message.toLowerCase();
-
-            // 1. DEFINITION QUESTIONS (What is, Define, Meaning)
-            if (lowerQuestion.includes('what is') || lowerQuestion.includes('define') || lowerQuestion.includes('meaning of')) {
-                return `📚 Definition Overview\n\n📌 ${getFirstSentence(message)}\n\n🔹 ${getSecondSentence(message)}\n\n💡 ${getRemainingSentences(message)}`;
+            const simpleQuestions = [
+                'how are you', 'hello', 'hi', 'what can you do',
+                'who are you', 'thanks', 'thank you', 'ok', 'okay',
+                'good morning', 'good afternoon', 'good evening'
+            ];
+            
+            const complexIndicators = [
+                'explain', 'describe', 'analyze', 'steps', 'how to',
+                'process', 'method', 'detailed', 'guide', 'what is',
+                'tell me about', 'can you help', 'help me'
+            ];
+            
+            const userQuestionLower = userQuestion.toLowerCase();
+            
+            // Simple questions - direct answer
+            if (simpleQuestions.some(q => userQuestionLower.includes(q))) {
+                return message;
             }
-
-            // 2. EXPLANATION QUESTIONS (Explain, How does, Describe)
-            if (lowerQuestion.includes('explain') || lowerQuestion.includes('how does') || lowerQuestion.includes('describe')) {
-                return `🔍 Detailed Explanation\n\n${formatAsSteps(message)}`;
+            
+            // Complex questions - step by step
+            if (complexIndicators.some(indicator => userQuestionLower.includes(indicator)) || 
+                message.length > 300) {
+                
+                // Convert to step by step format
+                const sentences = message.split('. ').filter(s => s.trim().length > 20);
+                
+                if (sentences.length > 2) {
+                    let stepByStep = '';
+                    sentences.forEach((sentence, index) => {
+                        if (sentence.trim().length > 30) {
+                            stepByStep += `• ${sentence.trim()}.\n\n`;
+                        }
+                    });
+                    return stepByStep || message;
+                }
             }
-
-            // 3. COMPARISON QUESTIONS (vs, difference between, compare)
-            if (lowerQuestion.includes(' vs ') || lowerQuestion.includes('difference between') || lowerQuestion.includes('compare')) {
-                return `⚖️ Comparison Analysis\n\n${formatAsComparison(message)}`;
-            }
-
-            // 4. STEP-BY-STEP QUESTIONS (How to, steps, process)
-            if (lowerQuestion.includes('how to') || lowerQuestion.includes('steps') || lowerQuestion.includes('process')) {
-                return `🔄 Step-by-Step Guide\n\n${formatAsNumberedSteps(message)}`;
-            }
-
-            // 5. LIST QUESTIONS (List, examples, types)
-            if (lowerQuestion.includes('list') || lowerQuestion.includes('examples') || lowerQuestion.includes('types of')) {
-                return `📋 Itemized List\n\n${formatAsList(message)}`;
-            }
-
-            // 6. ANALYSIS QUESTIONS (Analyze, review, discuss)
-            if (lowerQuestion.includes('analyze') || lowerQuestion.includes('review') || lowerQuestion.includes('discuss')) {
-                return `📊 In-Depth Analysis\n\n${formatAsAnalysis(message)}`;
-            }
-
-            // 7. Default formatting for long responses
-            if (message.length > 200 && !lowerMessage.includes('**')) {
-                return `📝 Comprehensive Answer\n\n${formatAsStructured(message)}`;
-            }
-
+            
+            // Default - return as is
             return message;
-        }
-
-        // Helper functions for different formats
-        function getFirstSentence(text) {
-            const sentences = text.split(/\.\s+/);
-            return sentences[0] ? sentences[0] + '.' : text;
-        }
-
-        function getSecondSentence(text) {
-            const sentences = text.split(/\.\s+/);
-            return sentences[1] ? sentences[1] + '.' : '';
-        }
-
-        function getRemainingSentences(text) {
-            const sentences = text.split(/\.\s+/);
-            return sentences.slice(2).join('. ') || text;
-        }
-
-        function formatAsSteps(text) {
-            const sentences = text.split(/\.\s+/).filter(s => s.length > 20);
-            if (sentences.length >= 2) {
-                let steps = '';
-                sentences.forEach((sentence, index) => {
-                    steps += `${index + 1}. ${sentence}.\n\n`;
-                });
-                return steps;
-            }
-            return text;
-        }
-
-        function formatAsComparison(text) {
-            const sentences = text.split(/\.\s+/);
-            let comparison = '';
-            sentences.forEach((sentence, index) => {
-                if (index % 2 === 0) {
-                    comparison += `✅ ${sentence}.\n\n`;
-                } else {
-                    comparison += `❌ ${sentence}.\n\n`;
-                }
-            });
-            return comparison;
-        }
-
-        function formatAsNumberedSteps(text) {
-            const steps = text.split(/\.\s+|;\s+|\n/).filter(step => step.length > 10);
-            let numbered = '';
-            steps.forEach((step, index) => {
-                numbered += `${index + 1}. ${step.trim()}\n\n`;
-            });
-            return numbered;
-        }
-
-        function formatAsList(text) {
-            const items = text.split(/\.\s+|\,\s+|\n/).filter(item => item.length > 15);
-            let list = '';
-            items.forEach((item, index) => {
-                list += `${index + 1}. ${item.trim()}\n\n`;
-            });
-            return list;
-        }
-
-        function formatAsAnalysis(text) {
-            const sentences = text.split(/\.\s+/);
-            let analysis = '';
-            sentences.forEach((sentence, index) => {
-                if (index === 0) {
-                    analysis += `📈 ${sentence}.\n\n`;
-                } else if (index === 1) {
-                    analysis += `📉 ${sentence}.\n\n`;
-                } else {
-                    analysis += `💡 ${sentence}.\n\n`;
-                }
-            });
-            return analysis;
-        }
-
-        function formatAsStructured(text) {
-            const sentences = text.split(/\.\s+/).filter(s => s.length > 25);
-            let structured = '';
-            
-            if (sentences.length >= 1) {
-                structured += `📌 ${sentences[0]}.\n\n`;
-            }
-            if (sentences.length >= 2) {
-                structured += `🔹 ${sentences[1]}.\n\n`;
-            }
-            if (sentences.length >= 3) {
-                structured += `🌟 ${sentences.slice(2).join('. ')}`;
-            }
-            
-            return structured;
         }
 
         // MODIFIED: addMessage function with typing effect
@@ -397,7 +306,7 @@
                 typingIndicator.style.display = 'none';
                 
                 if (data.success) {
-                    // Use CONCEPT-BASED formatting system
+                    // Use AI formatting system
                     const formattedResponse = formatAIResponse(data.text, message);
                     await addMessage(formattedResponse, false, [], true);
                 } else {
