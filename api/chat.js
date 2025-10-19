@@ -9,12 +9,11 @@ function base64ToGenerativePart(base64String, mimeType) {
     };
 }
 
-// Gemini Models for Chat & Analysis
+// Gemini Models - UPDATED for 2.5 Flash
 const GEMINI_MODELS = [
-    "gemini-2.0-flash-exp"
-    "gemini-1.5-flash",
-    "gemini-1.5-pro", 
-    "gemini-1.0-pro"
+    "gemini-2.0-flash-exp",    // ✅ আপনার 2.5 Flash model
+    "gemini-1.5-flash",        // ✅ Fallback 1
+    "gemini-1.5-pro"           // ✅ Fallback 2
 ];
 
 // Grok API for Backup
@@ -46,32 +45,59 @@ async function chatWithGrok(message) {
     }
 }
 
-// Gemini for Chat & Image Analysis
+// Gemini for Chat & Image Analysis - UPDATED for 2.5
 async function chatWithGemini(message, images = []) {
     for (const modelName of GEMINI_MODELS) {
         try {
-            console.log(`Trying Gemini model: ${modelName}`);
+            console.log(`🔄 Trying Gemini model: ${modelName}`);
+            
             const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-            const model = genAI.getGenerativeModel({ model: modelName });
+            const model = genAI.getGenerativeModel({ 
+                model: modelName,
+                generationConfig: {
+                    temperature: 0.7,
+                    topK: 40,
+                    topP: 0.95,
+                }
+            });
 
             let contents = [];
+            
             if (images.length > 0) {
+                // Image analysis mode
+                console.log(`📸 Processing ${images.length} image(s) with Gemini`);
                 const imageParts = images.map(imgData => {
                     const mimeType = imgData.split(';')[0].split(':')[1];
                     return base64ToGenerativePart(imgData, mimeType);
                 });
                 contents = [message, ...imageParts];
             } else {
+                // Text chat mode
                 contents = [message];
             }
 
+            console.log(`📝 Sending to Gemini: ${message.substring(0, 100)}...`);
             const result = await model.generateContent(contents);
             const response = await result.response;
             
+            console.log(`✅ Gemini ${modelName} success`);
             return { text: response.text(), modelUsed: modelName };
+            
         } catch (error) {
-            console.error(`Gemini ${modelName} failed:`, error.message);
-            if (error.message.includes('quota') || error.message.includes('limit') || error.message.includes('429') || error.message.includes('not found')) continue;
+            console.error(`❌ Gemini ${modelName} failed:`, error.message);
+            
+            // Check specific error types
+            if (error.message.includes('MODEL_NOT_FOUND') || 
+                error.message.includes('not found') ||
+                error.message.includes('404') ||
+                error.message.includes('quota') || 
+                error.message.includes('limit') || 
+                error.message.includes('429')) {
+                console.log(`⏩ Skipping ${modelName}, trying next...`);
+                continue; // Try next model
+            }
+            
+            // For other errors, throw immediately
             throw error;
         }
     }
@@ -81,7 +107,7 @@ async function chatWithGemini(message, images = []) {
 // Hugging Face Image Generation ONLY
 async function generateWithHuggingFace(prompt) {
     try {
-        console.log("🔄 Starting Hugging Face image generation...");
+        console.log("🎨 Starting Hugging Face image generation...");
         
         const models = [
             "runwayml/stable-diffusion-v1-5",
@@ -102,7 +128,11 @@ async function generateWithHuggingFace(prompt) {
                             "Content-Type": "application/json",
                         },
                         body: JSON.stringify({ 
-                            inputs: prompt
+                            inputs: prompt,
+                            parameters: {
+                                width: 512,
+                                height: 512
+                            }
                         }),
                     }
                 );
@@ -115,7 +145,8 @@ async function generateWithHuggingFace(prompt) {
                 }
 
                 if (!response.ok) {
-                    console.log(`❌ Model failed: ${response.status}`);
+                    const errorText = await response.text();
+                    console.log(`❌ Model failed: ${response.status} - ${errorText}`);
                     continue;
                 }
 
@@ -150,14 +181,16 @@ module.exports = async (req, res) => {
     try {
         const { message, images, mode } = req.body;
         
-        console.log("📨 Request:", { mode, message: message?.substring(0, 50), hasImages: images?.length > 0 });
+        console.log("📨 Request received:", { 
+            mode, 
+            message: message?.substring(0, 100),
+            hasImages: images?.length > 0 
+        });
 
         // ✅ IMAGE GENERATION - Hugging Face ONLY
         if (mode === 'generate' && message) {
             try {
                 console.log("🚀 Starting image generation with Hugging Face...");
-                
-                // Simple Hugging Face generation - no Gemini analysis
                 const generatedImage = await generateWithHuggingFace(message);
                 
                 return res.status(200).json({
@@ -176,13 +209,13 @@ module.exports = async (req, res) => {
             }
         }
 
-        // ✅ IMAGE ANALYSIS - Gemini ONLY
+        // ✅ IMAGE ANALYSIS - Gemini 2.5 ONLY
         else if (mode === 'analyze' && images && images.length > 0) {
             try {
-                console.log("Starting image analysis with Gemini...");
+                console.log("🔍 Starting image analysis with Gemini 2.5...");
                 const prompt = message 
                     ? `Analyze this image and: ${message}`
-                    : "Describe this image in detail including subjects, colors, background, and overall impression.";
+                    : "Describe this image in detail including subjects, colors, background, lighting, and overall impression.";
                 
                 const result = await chatWithGemini(prompt, images);
                 
@@ -195,22 +228,25 @@ module.exports = async (req, res) => {
             } catch (error) {
                 if (error.message === 'ALL_GEMINI_MODELS_FAILED') {
                     try {
+                        console.log("🔄 Falling back to Grok for analysis...");
                         const grokResult = await chatWithGrok(
-                            `Analyze this image request: "${message}". I cannot see the image but provide helpful guidance.`
+                            `Analyze this image request: "${message}". Provide helpful analysis guidance.`
                         );
                         return res.status(200).json({ 
                             success: true,
-                            text: `⚠️ Gemini unavailable. Using Grok:\n\n${grokResult.text}`,
+                            text: `⚠️ Gemini models unavailable. Using Grok:\n\n${grokResult.text}`,
                             mode: 'analyze',
                             modelUsed: grokResult.modelUsed
                         });
                     } catch (grokError) {
+                        console.error("❌ Grok also failed:", grokError);
                         return res.status(200).json({
                             success: false,
-                            text: `❌ Analysis failed. Please try again later.`
+                            text: `❌ All AI models failed for image analysis. Please try again later.`
                         });
                     }
                 }
+                console.error("❌ Image analysis failed:", error);
                 return res.status(200).json({
                     success: false,
                     text: `❌ Analysis failed: ${error.message}`
@@ -218,10 +254,10 @@ module.exports = async (req, res) => {
             }
         }
         
-        // ✅ TEXT CHAT - Gemini ONLY
+        // ✅ TEXT CHAT - Gemini 2.5 ONLY
         else if (message) {
             try {
-                console.log("Starting chat with Gemini...");
+                console.log("💬 Starting chat with Gemini 2.5...");
                 const result = await chatWithGemini(message);
                 
                 return res.status(200).json({ 
@@ -233,20 +269,23 @@ module.exports = async (req, res) => {
             } catch (error) {
                 if (error.message === 'ALL_GEMINI_MODELS_FAILED') {
                     try {
+                        console.log("🔄 Falling back to Grok for chat...");
                         const grokResult = await chatWithGrok(message);
                         return res.status(200).json({ 
                             success: true,
-                            text: `⚠️ Gemini unavailable. Using Grok:\n\n${grokResult.text}`,
+                            text: `⚠️ Gemini models unavailable. Using Grok:\n\n${grokResult.text}`,
                             mode: 'chat',
                             modelUsed: grokResult.modelUsed
                         });
                     } catch (grokError) {
+                        console.error("❌ Grok also failed:", grokError);
                         return res.status(200).json({
                             success: false,
-                            text: `❌ Chat failed. Please try again later.`
+                            text: `❌ All AI models failed. Please try again later.`
                         });
                     }
                 }
+                console.error("❌ Chat failed:", error);
                 return res.status(200).json({
                     success: false,
                     text: `❌ Chat failed: ${error.message}`
