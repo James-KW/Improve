@@ -9,11 +9,11 @@ function base64ToGenerativePart(base64String, mimeType) {
     };
 }
 
-// Available Gemini Models
+// Gemini Models for Chat & Analysis
 const GEMINI_MODELS = [
-    "gemini-2.0-flash-exp",
-    "gemini-1.5-flash", 
-    "gemini-1.5-pro"
+    "gemini-1.5-flash",
+    "gemini-1.5-pro", 
+    "gemini-1.0-pro"
 ];
 
 // Grok API for Backup
@@ -45,7 +45,7 @@ async function chatWithGrok(message) {
     }
 }
 
-// Gemini with Multiple Model Fallback
+// Gemini for Chat & Image Analysis
 async function chatWithGemini(message, images = []) {
     for (const modelName of GEMINI_MODELS) {
         try {
@@ -70,21 +70,22 @@ async function chatWithGemini(message, images = []) {
             return { text: response.text(), modelUsed: modelName };
         } catch (error) {
             console.error(`Gemini ${modelName} failed:`, error.message);
-            if (error.message.includes('quota') || error.message.includes('limit') || error.message.includes('429')) continue;
+            if (error.message.includes('quota') || error.message.includes('limit') || error.message.includes('429') || error.message.includes('not found')) continue;
             throw error;
         }
     }
     throw new Error('ALL_GEMINI_MODELS_FAILED');
 }
 
-// Hugging Face Image Generation
+// Hugging Face Image Generation ONLY
 async function generateWithHuggingFace(prompt) {
     try {
         console.log("🔄 Starting Hugging Face image generation...");
         
         const models = [
             "runwayml/stable-diffusion-v1-5",
-            "stabilityai/stable-diffusion-xl-base-1.0"
+            "stabilityai/stable-diffusion-xl-base-1.0",
+            "black-forest-labs/FLUX.1-schnell"
         ];
 
         for (let model of models) {
@@ -137,49 +138,6 @@ async function generateWithHuggingFace(prompt) {
     }
 }
 
-// Image Recreation based on uploaded image
-async function recreateImageFromReference(message, referenceImages) {
-    try {
-        // First, analyze the reference image with Gemini
-        const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
-
-        const imageParts = referenceImages.map(imgData => {
-            const mimeType = imgData.split(';')[0].split(':')[1];
-            return base64ToGenerativePart(imgData, mimeType);
-        });
-
-        const analysisPrompt = `Analyze this image and describe it in detail including: 
-        - Main subjects and objects
-        - Colors and color scheme
-        - Style and composition
-        - Lighting and mood
-        - Any distinctive features
-        
-        Be very descriptive for image generation purposes.`;
-
-        const result = await model.generateContent([analysisPrompt, ...imageParts]);
-        const analysis = await result.response;
-        
-        console.log("📝 Image analysis:", analysis.text());
-        
-        // Create enhanced prompt for generation
-        const enhancedPrompt = `${message}. Based on this reference image: ${analysis.text()}`;
-        
-        // Generate new image using Hugging Face
-        const generatedImage = await generateWithHuggingFace(enhancedPrompt);
-        
-        return {
-            image: generatedImage,
-            analysis: analysis.text(),
-            promptUsed: enhancedPrompt
-        };
-    } catch (error) {
-        console.error("Image recreation failed:", error);
-        throw error;
-    }
-}
-
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
@@ -193,38 +151,19 @@ module.exports = async (req, res) => {
         
         console.log("📨 Request:", { mode, message: message?.substring(0, 50), hasImages: images?.length > 0 });
 
-        // ✅ IMAGE GENERATION - With or without reference images
+        // ✅ IMAGE GENERATION - Hugging Face ONLY
         if (mode === 'generate' && message) {
             try {
-                console.log("🚀 Starting image generation...");
+                console.log("🚀 Starting image generation with Hugging Face...");
                 
-                let result;
-                
-                if (images && images.length > 0) {
-                    // Image recreation based on uploaded reference
-                    console.log("🎨 Generating image with reference...");
-                    const recreationResult = await recreateImageFromReference(message, images);
-                    result = {
-                        text: `IMAGE_GENERATED:${recreationResult.image}`,
-                        message: "Image recreated based on reference!",
-                        analysis: recreationResult.analysis,
-                        success: true
-                    };
-                } else {
-                    // Direct image generation from text
-                    console.log("🎨 Generating image from text...");
-                    const generatedImage = await generateWithHuggingFace(message);
-                    result = {
-                        text: `IMAGE_GENERATED:${generatedImage}`,
-                        message: "Image generated successfully!",
-                        success: true
-                    };
-                }
+                // Simple Hugging Face generation - no Gemini analysis
+                const generatedImage = await generateWithHuggingFace(message);
                 
                 return res.status(200).json({
-                    ...result,
+                    text: `IMAGE_GENERATED:${generatedImage}`,
+                    message: "Image generated successfully!",
                     mode: 'generate',
-                    hadReference: images && images.length > 0
+                    success: true
                 });
             } catch (error) {
                 console.error("❌ Image generation failed:", error);
@@ -236,13 +175,13 @@ module.exports = async (req, res) => {
             }
         }
 
-        // ✅ IMAGE ANALYSIS - Gemini
+        // ✅ IMAGE ANALYSIS - Gemini ONLY
         else if (mode === 'analyze' && images && images.length > 0) {
             try {
                 console.log("Starting image analysis with Gemini...");
                 const prompt = message 
                     ? `Analyze this image and: ${message}`
-                    : "Describe this image in detail.";
+                    : "Describe this image in detail including subjects, colors, background, and overall impression.";
                 
                 const result = await chatWithGemini(prompt, images);
                 
@@ -256,18 +195,18 @@ module.exports = async (req, res) => {
                 if (error.message === 'ALL_GEMINI_MODELS_FAILED') {
                     try {
                         const grokResult = await chatWithGrok(
-                            `Analyze this image request: "${message}". Provide helpful analysis guidance.`
+                            `Analyze this image request: "${message}". I cannot see the image but provide helpful guidance.`
                         );
                         return res.status(200).json({ 
                             success: true,
-                            text: `⚠️ Using Grok:\n\n${grokResult.text}`,
+                            text: `⚠️ Gemini unavailable. Using Grok:\n\n${grokResult.text}`,
                             mode: 'analyze',
                             modelUsed: grokResult.modelUsed
                         });
                     } catch (grokError) {
                         return res.status(200).json({
                             success: false,
-                            text: `❌ Analysis failed. Please try again.`
+                            text: `❌ Analysis failed. Please try again later.`
                         });
                     }
                 }
@@ -278,7 +217,7 @@ module.exports = async (req, res) => {
             }
         }
         
-        // ✅ TEXT CHAT - Gemini
+        // ✅ TEXT CHAT - Gemini ONLY
         else if (message) {
             try {
                 console.log("Starting chat with Gemini...");
@@ -296,14 +235,14 @@ module.exports = async (req, res) => {
                         const grokResult = await chatWithGrok(message);
                         return res.status(200).json({ 
                             success: true,
-                            text: `⚠️ Using Grok:\n\n${grokResult.text}`,
+                            text: `⚠️ Gemini unavailable. Using Grok:\n\n${grokResult.text}`,
                             mode: 'chat',
                             modelUsed: grokResult.modelUsed
                         });
                     } catch (grokError) {
                         return res.status(200).json({
                             success: false,
-                            text: `❌ Chat failed. Please try again.`
+                            text: `❌ Chat failed. Please try again later.`
                         });
                     }
                 }
