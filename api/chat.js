@@ -11,6 +11,7 @@ function base64ToGenerativePart(base64String, mimeType) {
 
 // Gemini Models for Chat & Analysis
 const GEMINI_MODELS = [
+    "gemini-2.0-flash-exp"
     "gemini-1.5-flash",
     "gemini-1.5-pro", 
     "gemini-1.0-pro"
