@@ -31,7 +31,7 @@
         .mode-btn.active { background: #007bff; color: white; }
         .download-btn { background: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; margin-top: 5px; }
         
-        /* New Typing Indicator Styles */
+        /* Typing Indicator Styles */
         .typing-indicator {
             display: none;
             padding: 10px 15px;
@@ -66,7 +66,7 @@
             </div>
         </div>
         
-        <!-- New Typing Indicator -->
+        <!-- Typing Indicator -->
         <div class="typing-indicator" id="typingIndicator">
             James typing... <span class="typing-cursor"></span>
         </div>
@@ -135,7 +135,7 @@
             previewDiv.remove();
         }
 
-        // NEW: Real-time typing function
+        // Real-time typing function
         function typeText(element, text, speed = 20) {
             return new Promise((resolve) => {
                 let index = 0;
@@ -152,6 +152,49 @@
                 }
                 type();
             });
+        }
+
+        // NEW: AI Response Formatting System
+        function formatAIResponse(message, userQuestion) {
+            const simpleQuestions = [
+                'how are you', 'hello', 'hi', 'what can you do',
+                'who are you', 'thanks', 'thank you', 'ok', 'okay',
+                'good morning', 'good afternoon', 'good evening'
+            ];
+            
+            const complexIndicators = [
+                'explain', 'describe', 'analyze', 'steps', 'how to',
+                'process', 'method', 'detailed', 'guide', 'what is',
+                'tell me about', 'can you help', 'help me'
+            ];
+            
+            const userQuestionLower = userQuestion.toLowerCase();
+            
+            // Simple questions - direct answer
+            if (simpleQuestions.some(q => userQuestionLower.includes(q))) {
+                return message;
+            }
+            
+            // Complex questions - step by step
+            if (complexIndicators.some(indicator => userQuestionLower.includes(indicator)) || 
+                message.length > 300) {
+                
+                // Convert to step by step format
+                const sentences = message.split('. ').filter(s => s.trim().length > 20);
+                
+                if (sentences.length > 2) {
+                    let stepByStep = '';
+                    sentences.forEach((sentence, index) => {
+                        if (sentence.trim().length > 30) {
+                            stepByStep += `• ${sentence.trim()}.\n\n`;
+                        }
+                    });
+                    return stepByStep || message;
+                }
+            }
+            
+            // Default - return as is
+            return message;
         }
 
         // MODIFIED: addMessage function with typing effect
@@ -221,12 +264,13 @@
             link.click();
         }
 
-        // MODIFIED: sendMessage function with typing indicator
+        // MODIFIED: sendMessage function with AI formatting system
         async function sendMessage() {
             const messageInput = document.getElementById('messageInput');
             const message = messageInput.value.trim();
             const sendButton = document.getElementById('sendButton');
             const typingIndicator = document.getElementById('typingIndicator');
+            const chatContainer = document.getElementById('chatContainer');
             
             if (!message && uploadedImages.length === 0) return;
             
@@ -262,7 +306,9 @@
                 typingIndicator.style.display = 'none';
                 
                 if (data.success) {
-                    await addMessage(data.text, false, [], true); // Use typing effect
+                    // Use AI formatting system
+                    const formattedResponse = formatAIResponse(data.text, message);
+                    await addMessage(formattedResponse, false, [], true);
                 } else {
                     await addMessage('Error: ' + data.text, false, [], true);
                 }
@@ -283,6 +329,12 @@
                 e.preventDefault();
                 sendMessage();
             }
+        });
+
+        // Auto-resize textarea
+        document.getElementById('messageInput').addEventListener('input', function() {
+            this.style.height = 'auto';
+            this.style.height = (this.scrollHeight) + 'px';
         });
     </script>
 </body>
