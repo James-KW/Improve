@@ -30,6 +30,26 @@
         .mode-btn { padding: 8px 15px; border: 1px solid #007bff; background: white; color: #007bff; border-radius: 15px; cursor: pointer; }
         .mode-btn.active { background: #007bff; color: white; }
         .download-btn { background: #28a745; color: white; border: none; padding: 5px 10px; border-radius: 5px; cursor: pointer; margin-top: 5px; }
+        
+        /* New Typing Indicator Styles */
+        .typing-indicator {
+            display: none;
+            padding: 10px 15px;
+            color: #666;
+            font-style: italic;
+        }
+        .typing-cursor {
+            display: inline-block;
+            width: 8px;
+            height: 16px;
+            background: #007bff;
+            margin-left: 2px;
+            animation: blink 1s infinite;
+        }
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0; }
+        }
     </style>
 </head>
 <body>
@@ -44,6 +64,11 @@
                     Hello! I can chat, analyze images, and generate images. Upload an image or type a message.
                 </div>
             </div>
+        </div>
+        
+        <!-- New Typing Indicator -->
+        <div class="typing-indicator" id="typingIndicator">
+            James typing... <span class="typing-cursor"></span>
         </div>
         
         <div class="input-container">
@@ -110,28 +135,82 @@
             previewDiv.remove();
         }
 
-        function addMessage(message, isUser = false, images = []) {
+        // NEW: Real-time typing function
+        function typeText(element, text, speed = 20) {
+            return new Promise((resolve) => {
+                let index = 0;
+                element.innerHTML = '';
+                function type() {
+                    if (index < text.length) {
+                        element.innerHTML += text.charAt(index);
+                        index++;
+                        chatContainer.scrollTop = chatContainer.scrollHeight;
+                        setTimeout(type, speed);
+                    } else {
+                        resolve();
+                    }
+                }
+                type();
+            });
+        }
+
+        // MODIFIED: addMessage function with typing effect
+        async function addMessage(message, isUser = false, images = [], useTyping = false) {
             const chatContainer = document.getElementById('chatContainer');
             const messageDiv = document.createElement('div');
             messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
             
-            let content = '';
-            if (isUser && images.length > 0) {
-                images.forEach(img => content += `<img src="${img}" class="chat-image"><br>`);
-            }
-            
-            if (message.startsWith('IMAGE_GENERATED:')) {
-                const imageData = message.replace('IMAGE_GENERATED:', '');
-                content += `
-                    <img src="${imageData}" class="chat-image">
-                    <br><button class="download-btn" onclick="downloadImage('${imageData}')">📥 Download</button>
-                `;
-                message = 'Here is your image!';
-            }
-            
-            content += message;
-            messageDiv.innerHTML = `<div class="message-bubble">${content}</div>`;
+            const bubbleDiv = document.createElement('div');
+            bubbleDiv.className = 'message-bubble';
+            messageDiv.appendChild(bubbleDiv);
             chatContainer.appendChild(messageDiv);
+
+            if (isUser) {
+                // User message - show immediately
+                if (images.length > 0) {
+                    images.forEach(img => {
+                        const imgElement = document.createElement('img');
+                        imgElement.src = img;
+                        imgElement.className = 'chat-image';
+                        bubbleDiv.appendChild(imgElement);
+                    });
+                }
+                if (message) {
+                    const textElement = document.createElement('div');
+                    textElement.textContent = message;
+                    bubbleDiv.appendChild(textElement);
+                }
+            } else {
+                // AI message - use typing effect
+                if (message.startsWith('IMAGE_GENERATED:')) {
+                    // Handle generated images
+                    const imageData = message.replace('IMAGE_GENERATED:', '');
+                    const imgElement = document.createElement('img');
+                    imgElement.src = imageData;
+                    imgElement.className = 'chat-image';
+                    bubbleDiv.appendChild(imgElement);
+                    
+                    const downloadBtn = document.createElement('button');
+                    downloadBtn.className = 'download-btn';
+                    downloadBtn.textContent = '📥 Download';
+                    downloadBtn.onclick = function() {
+                        downloadImage(imageData);
+                    };
+                    bubbleDiv.appendChild(downloadBtn);
+                    
+                    const textElement = document.createElement('div');
+                    textElement.textContent = 'Here is your generated image!';
+                    bubbleDiv.appendChild(textElement);
+                } else {
+                    // Text message - use typing effect
+                    if (useTyping) {
+                        await typeText(bubbleDiv, message, 15);
+                    } else {
+                        bubbleDiv.textContent = message;
+                    }
+                }
+            }
+            
             chatContainer.scrollTop = chatContainer.scrollHeight;
         }
 
@@ -142,34 +221,60 @@
             link.click();
         }
 
+        // MODIFIED: sendMessage function with typing indicator
         async function sendMessage() {
             const messageInput = document.getElementById('messageInput');
             const message = messageInput.value.trim();
+            const sendButton = document.getElementById('sendButton');
+            const typingIndicator = document.getElementById('typingIndicator');
             
             if (!message && uploadedImages.length === 0) return;
             
-            addMessage(message, true, [...uploadedImages]);
+            // Disable input while sending
+            messageInput.disabled = true;
+            sendButton.disabled = true;
+            
+            // Add user message
+            await addMessage(message, true, [...uploadedImages]);
             messageInput.value = '';
             const userImages = [...uploadedImages];
             document.getElementById('imagePreview').innerHTML = '';
             uploadedImages = [];
             
-            const response = await fetch('/api/chat', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    message: message,
-                    mode: currentMode,
-                    images: currentMode === 'analyze' ? userImages : []
-                })
-            });
+            // Show typing indicator
+            typingIndicator.style.display = 'block';
+            chatContainer.scrollTop = chatContainer.scrollHeight;
             
-            const data = await response.json();
-            if (data.success) {
-                addMessage(data.text, false);
-            } else {
-                addMessage('Error: ' + data.text, false);
+            try {
+                const response = await fetch('/api/chat', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: message,
+                        mode: currentMode,
+                        images: currentMode === 'analyze' ? userImages : []
+                    })
+                });
+                
+                const data = await response.json();
+                
+                // Hide typing indicator
+                typingIndicator.style.display = 'none';
+                
+                if (data.success) {
+                    await addMessage(data.text, false, [], true); // Use typing effect
+                } else {
+                    await addMessage('Error: ' + data.text, false, [], true);
+                }
+            } catch (error) {
+                typingIndicator.style.display = 'none';
+                await addMessage('Connection error: ' + error.message, false, [], true);
             }
+            
+            // Re-enable input
+            messageInput.disabled = false;
+            sendButton.disabled = false;
+            messageInput.focus();
         }
 
         // Enter key support
