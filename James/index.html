@@ -1,209 +1,210 @@
-<!DOCTYPE html>
-<html>
-<head>
-    <title>James AI - Image & Text Assistant</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
-        body {
-            font-family: Arial, sans-serif;
-            background: #f0f2f5;
-            padding: 20px;
-        }
-        .container {
-            max-width: 800px;
-            margin: 0 auto;
-            background: white;
-            border-radius: 10px;
-            overflow: hidden;
-            height: 90vh;
-            display: flex;
-            flex-direction: column;
-        }
-        .header {
-            background: #007bff;
-            color: white;
-            padding: 15px;
-            text-align: center;
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            position: relative;
-        }
-        .header h1 {
-            margin: 0;
-            flex: 1;
-            text-align: center;
-        }
-        .contact-info-btn {
-            background: linear-gradient(to right, #fdbb2d, #b21f1f);
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 20px;
-            cursor: pointer;
-            font-size: 0.9rem;
-            font-weight: bold;
-            transition: all 0.3s;
-            white-space: nowrap;
-        }
-        .contact-info-btn:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
-        }
-        .chat-container {
-            flex: 1;
-            overflow-y: auto;
-            padding: 20px;
-            background: #f8f9fa;
-        }
-        .message {
-            margin-bottom: 15px;
-            display: flex;
-        }
-        .user-message {
-            justify-content: flex-end;
-        }
-        .ai-message {
-            justify-content: flex-start;
-        }
-        .message-bubble {
-            max-width: 80%;
-            padding: 10px 15px;
-            border-radius: 15px;
-            white-space: pre-line;
-        }
-        .user-message .message-bubble {
-            background: #007bff;
-            color: white;
-        }
-        .ai-message .message-bubble {
-            background: white;
-            border: 1px solid #ddd;
-        }
-        .input-container {
-            padding: 15px;
-            background: white;
-            border-top: 1px solid #ddd;
-            display: flex;
-            gap: 10px;
-        }
-        #messageInput {
-            flex: 1;
-            padding: 10px;
-            border: 1px solid #ddd;
-            border-radius: 20px;
-        }
-        #sendButton {
-            background: #007bff;
-            color: white;
-            border: none;
-            padding: 10px 20px;
-            border-radius: 20px;
-            cursor: pointer;
-        }
-        .upload-container {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-        .upload-btn {
-            background: #28a745;
-            color: white;
-            border: none;
-            padding: 8px 15px;
-            border-radius: 15px;
-            cursor: pointer;
-        }
-        #fileInput {
-            display: none;
-        }
-        .image-preview {
-            display: flex;
-            gap: 10px;
-            margin-top: 10px;
-            flex-wrap: wrap;
-        }
-        .preview-image {
-            position: relative;
-            width: 60px;
-            height: 60px;
-            border-radius: 8px;
-            overflow: hidden;
-            border: 2px solid #007bff;
-        }
-        .preview-image img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        .remove-image {
-            position: absolute;
-            top: -5px;
-            right: -5px;
-            background: red;
-            color: white;
-            border: none;
-            border-radius: 50%;
-            width: 18px;
-            height: 18px;
-            cursor: pointer;
-            font-size: 12px;
-        }
-        .chat-image {
-            max-width: 300px;
-            max-height: 300px;
-            border-radius: 8px;
-            margin: 5px 0;
-        }
-        .mode-selector {
-            display: flex;
-            gap: 10px;
-            margin-bottom: 10px;
-        }
-        .mode-btn {
-            padding: 8px 15px;
-            border: 1px solid #007bff;
-            background: white;
-            color: #007bff;
-            border-radius: 15px;
-            cursor: pointer;
-        }
-        .mode-btn.active {
-            background: #007bff;
-            color: white;
-        }
-        .download-btn {
-            background: #28a745;
-            color: white;
-            border: none;
-            padding: 5px 10px;
-            border-radius: 5px;
-            cursor: pointer;
-            margin-top: 5px;
-        }
-        .typing-indicator {
-            display: none;
-            padding: 10px 15px;
-            color: #666;
-            font-style: italic;
-        }
-        .typing-cursor {
-            display: inline-block;
-            width: 8px;
-            height: 16px;
-            background: #007bff;
-            margin-left: 2px;
-            animation: blink 1s infinite;
-        }
-        @keyframes blink {
-            0%, 100% { opacity: 1; }
-            50% { opacity: 0; }
-        }
+<!DOCTYPE html> 
+<html> 
+<head> 
+    <title>James AI - Image & Text Assistant</title> 
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"> 
+    <style> 
+        * { 
+            margin: 0; 
+            padding: 0; 
+            box-sizing: border-box; 
+        } 
+        body { 
+            font-family: Arial, sans-serif; 
+            background: #f0f2f5; 
+            padding: 20px; 
+        } 
+        .container { 
+            max-width: 800px; 
+            margin: 0 auto; 
+            background: white; 
+            border-radius: 10px; 
+            overflow: hidden; 
+            height: 90vh; 
+            display: flex; 
+            flex-direction: column; 
+        } 
+        .header { 
+            background: #007bff; 
+            color: white; 
+            padding: 15px; 
+            text-align: center; 
+            display: flex; 
+            justify-content: space-between; 
+            align-items: center; 
+            position: relative; 
+        } 
+        .header h1 { 
+            margin: 0; 
+            flex: 1; 
+            text-align: center; 
+        } 
+        .contact-info-btn { 
+            background: linear-gradient(to right, #fdbb2d, #b21f1f); 
+            color: white; 
+            border: none; 
+            padding: 8px 15px; 
+            border-radius: 20px; 
+            cursor: pointer; 
+            font-size: 0.9rem; 
+            font-weight: bold; 
+            transition: all 0.3s; 
+            white-space: nowrap; 
+        } 
+        .contact-info-btn:hover { 
+            transform: translateY(-2px); 
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3); 
+        } 
+        .chat-container { 
+            flex: 1; 
+            overflow-y: auto; 
+            padding: 20px; 
+            background: #f8f9fa; 
+        } 
+        .message { 
+            margin-bottom: 15px; 
+            display: flex; 
+        } 
+        .user-message { 
+            justify-content: flex-end; 
+        } 
+        .ai-message { 
+            justify-content: flex-start; 
+        } 
+        .message-bubble { 
+            max-width: 80%; 
+            padding: 10px 15px; 
+            border-radius: 15px; 
+            white-space: pre-line; 
+        } 
+        .user-message .message-bubble { 
+            background: #007bff; 
+            color: white; 
+        } 
+        .ai-message .message-bubble { 
+            background: white; 
+            border: 1px solid #ddd; 
+        } 
+        .input-container { 
+            padding: 15px; 
+            background: white; 
+            border-top: 1px solid #ddd; 
+            display: flex; 
+            gap: 10px; 
+        } 
+        #messageInput { 
+            flex: 1; 
+            padding: 10px; 
+            border: 1px solid #ddd; 
+            border-radius: 20px; 
+        } 
+        #sendButton { 
+            background: #007bff; 
+            color: white; 
+            border: none; 
+            padding: 10px 20px; 
+            border-radius: 20px; 
+            cursor: pointer; 
+        } 
+        .upload-container { 
+            display: flex; 
+            gap: 10px; 
+            margin-bottom: 10px; 
+        } 
+        .upload-btn { 
+            background: #28a745; 
+            color: white; 
+            border: none; 
+            padding: 8px 15px; 
+            border-radius: 15px; 
+            cursor: pointer; 
+        } 
+        #fileInput { 
+            display: none; 
+        } 
+        .image-preview { 
+            display: flex; 
+            gap: 10px; 
+            margin-top: 10px; 
+            flex-wrap: wrap; 
+        } 
+        .preview-image { 
+            position: relative; 
+            width: 60px; 
+            height: 60px; 
+            border-radius: 8px; 
+            overflow: hidden; 
+            border: 2px solid #007bff; 
+        } 
+        .preview-image img { 
+            width: 100%; 
+            height: 100%; 
+            object-fit: cover; 
+        } 
+        .remove-image { 
+            position: absolute; 
+            top: -5px; 
+            right: -5px; 
+            background: red; 
+            color: white; 
+            border: none; 
+            border-radius: 50%; 
+            width: 18px; 
+            height: 18px; 
+            cursor: pointer; 
+            font-size: 12px; 
+        } 
+        .chat-image { 
+            max-width: 300px; 
+            max-height: 300px; 
+            border-radius: 8px; 
+            margin: 5px 0; 
+        } 
+        .mode-selector { 
+            display: flex; 
+            gap: 10px; 
+            margin-bottom: 10px; 
+        } 
+        .mode-btn { 
+            padding: 8px 15px; 
+            border: 1px solid #007bff; 
+            background: white; 
+            color: #007bff; 
+            border-radius: 15px; 
+            cursor: pointer; 
+        } 
+        .mode-btn.active { 
+            background: #007bff; 
+            color: white; 
+        } 
+        .download-btn { 
+            background: #28a745; 
+            color: white; 
+            border: none; 
+            padding: 5px 10px; 
+            border-radius: 5px; 
+            cursor: pointer; 
+            margin-top: 5px; 
+        } 
+        .typing-indicator { 
+            display: none; 
+            padding: 10px 15px; 
+            color: #666; 
+            font-style: italic; 
+        } 
+        .typing-cursor { 
+            display: inline-block; 
+            width: 8px; 
+            height: 16px; 
+            background: #007bff; 
+            margin-left: 2px; 
+            animation: blink 1s infinite; 
+        } 
+        @keyframes blink { 
+            0%, 100% { opacity: 1; } 
+            50% { opacity: 0; } 
+        } 
+
         /* ========== AUTHOR INFO MODAL CSS ============ */
         .modal {
             display: none;
@@ -234,9 +235,7 @@
             font-weight: bold;
             cursor: pointer;
         }
-        .close:hover {
-            color: #fdbb2d;
-        }
+        .close:hover { color: #fdbb2d; }
         .header h1 {
             font-size: 2.5rem;
             margin-bottom: 10px;
@@ -253,33 +252,12 @@
             border: 5px solid #fdbb2d;
             overflow: hidden;
         }
-        .author-image img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-        }
-        .author-details h2 {
-            font-size: 1.8rem;
-            margin-bottom: 10px;
-        }
-        .author-details p {
-            margin-bottom: 5px;
-            color: #ddd;
-        }
-        .skills-container {
-            display: flex;
-            justify-content: space-between;
-            margin: 20px 0;
-        }
-        .skills-column {
-            flex: 1;
-            padding: 0 10px;
-        }
-        .skills-column h3 {
-            margin-bottom: 10px;
-            font-size: 1.2rem;
-            color: #fdbb2d;
-        }
+        .author-image img { width: 100%; height: 100%; object-fit: cover; }
+        .author-details h2 { font-size: 1.8rem; margin-bottom: 10px; }
+        .author-details p { margin-bottom: 5px; color: #ddd; }
+        .skills-container { display: flex; justify-content: space-between; margin: 20px 0; }
+        .skills-column { flex: 1; padding: 0 10px; }
+        .skills-column h3 { margin-bottom: 10px; font-size: 1.2rem; color: #fdbb2d; }
         .skill-item {
             background: rgba(255, 255, 255, 0.1);
             padding: 8px;
@@ -306,42 +284,44 @@
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
         }
         /* ============================================ */
-    </style>
-</head>
-<body>
-    <div class="container">
-        <div class="header">
+    </style> 
+</head> 
+<body> 
+    <div class="container"> 
+        <div class="header"> 
             <button class="contact-info-btn" onclick="openAuthorInfo()">📞 Contact Author</button>
             <h1>🚀 James AI</h1>
             <div style="width: 100px;"></div>
-        </div>
-        <div class="chat-container" id="chatContainer">
-            <div class="message ai-message">
-                <div class="message-bubble">
-                    Hello! I can chat, analyze images, and generate images. Upload an image or type a message.
-                </div>
-            </div>
-        </div>
-        <div class="typing-indicator" id="typingIndicator">
-            James typing... <span class="typing-cursor"></span>
-        </div>
-        <div class="input-container">
-            <div style="flex: 1;">
-                <div class="mode-selector">
-                    <button class="mode-btn active" onclick="setMode('chat')">💬 Chat</button>
-                    <button class="mode-btn" onclick="setMode('analyze')">🔍 Analyze</button>
-                    <button class="mode-btn" onclick="setMode('generate')">🎨 Generate</button>
-                </div>
-                <div class="upload-container">
-                    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">📁 Upload Image</button>
-                    <input type="file" id="fileInput" accept="image/*" multiple onchange="handleImageUpload(event)">
-                    <div class="image-preview" id="imagePreview"></div>
-                </div>
-                <textarea id="messageInput" placeholder="Type your message..." rows="1"></textarea>
-            </div>
-            <button id="sendButton" onclick="sendMessage()">Send</button>
-        </div>
-    </div>
+        </div> 
+        <div class="chat-container" id="chatContainer"> 
+            <div class="message ai-message"> 
+                <div class="message-bubble"> 
+                    Hello! I can chat, analyze images, and generate images. Upload an image or type a message. 
+                </div> 
+            </div> 
+        </div> 
+
+        <div class="typing-indicator" id="typingIndicator"> 
+            James typing... <span class="typing-cursor"></span> 
+        </div> 
+
+        <div class="input-container"> 
+            <div style="flex: 1;"> 
+                <div class="mode-selector"> 
+                    <button class="mode-btn active" onclick="setMode('chat')">💬 Chat</button> 
+                    <button class="mode-btn" onclick="setMode('analyze')">🔍 Analyze</button> 
+                    <button class="mode-btn" onclick="setMode('generate')">🎨 Generate</button> 
+                </div> 
+                <div class="upload-container"> 
+                    <button class="upload-btn" onclick="document.getElementById('fileInput').click()">📁 Upload Image</button> 
+                    <input type="file" id="fileInput" accept="image/*" multiple onchange="handleImageUpload(event)"> 
+                    <div class="image-preview" id="imagePreview"></div> 
+                </div> 
+                <textarea id="messageInput" placeholder="Type your message..." rows="1"></textarea> 
+            </div> 
+            <button id="sendButton" onclick="sendMessage()">Send</button> 
+        </div> 
+    </div> 
 
     <!-- ========== AUTHOR INFO MODAL ============ -->
     <div id="authorModal" class="modal">
@@ -351,9 +331,11 @@
                 <h1>JAMES AI</h1>
                 <p>Author Information</p>
             </div>
+            
             <div class="author-image">
                 <img src="https://raw.githubusercontent.com/James-KW/Improve/main/image/IMG-20251011-WA0045(2).jpg" alt="MR.JAMES">
             </div>
+            
             <div class="author-details">
                 <h2>MR.JAMES</h2>
                 <p>AI Developer & Enthusiast</p>
@@ -361,6 +343,7 @@
                 <p>📍 Location: Dhaka, Bangladesh</p>
                 <p>💻 GitHub: James404-cyber</p>
                 <p>📧 Email: jamesmr283@gmail.com</p>
+                
                 <div class="skills-container">
                     <div class="skills-column">
                         <h3>Specialization</h3>
@@ -376,16 +359,15 @@
                     </div>
                 </div>
             </div>
+            
             <button class="contact-option" onclick="window.open('https://wa.me/+96598064347', '_blank')">📞 Contact via WhatsApp</button>
         </div>
     </div>
     <!-- ======================================== -->
 
-    <script>
-        let currentMode = 'chat';
-        let uploadedImages = [];
-        let isGenerating = false;
-        let abortController = null;
+    <script> 
+        let currentMode = 'chat'; 
+        let uploadedImages = []; 
 
         // ========== AUTHOR INFO FUNCTIONS ==========
         function openAuthorInfo() {
@@ -404,250 +386,222 @@
         }
         // ==========================================
 
-        // ========== STOP FUNCTIONALITY ADDED ==========
-        function stopCurrentGeneration() {
-            if (isGenerating && abortController) {
-                abortController.abort();
-                isGenerating = false;
-                
-                const typingIndicator = document.getElementById('typingIndicator');
-                typingIndicator.style.display = 'none';
-                
-                const messageInput = document.getElementById('messageInput');
-                messageInput.disabled = false;
-                messageInput.focus();
-                
-                console.log('Previous response stopped');
-            }
-        }
-
         // ========== তোমার সব ORIGINAL CODE ==========
-        function setMode(mode) {
-            currentMode = mode;
-            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active'));
-            event.target.classList.add('active');
-        }
+        function setMode(mode) { 
+            currentMode = mode; 
+            document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active')); 
+            event.target.classList.add('active'); 
+        } 
 
-        function handleImageUpload(event) {
-            const files = event.target.files;
-            const previewContainer = document.getElementById('imagePreview');
-            for (let file of files) {
-                if (file.type.startsWith('image/')) {
-                    const reader = new FileReader();
-                    reader.onload = function(e) {
-                        const imageData = e.target.result;
-                        uploadedImages.push(imageData);
-                        const previewDiv = document.createElement('div');
-                        previewDiv.className = 'preview-image';
-                        previewDiv.innerHTML = `
-                            <img src="${imageData}" alt="Preview">
-                            <button class="remove-image" onclick="removeImage(this)">×</button>
-                        `;
-                        previewContainer.appendChild(previewDiv);
-                    };
-                    reader.readAsDataURL(file);
-                }
-            }
-            event.target.value = '';
-        }
+        function handleImageUpload(event) { 
+            const files = event.target.files; 
+            const previewContainer = document.getElementById('imagePreview'); 
+            for (let file of files) { 
+                if (file.type.startsWith('image/')) { 
+                    const reader = new FileReader(); 
+                    reader.onload = function(e) { 
+                        const imageData = e.target.result; 
+                        uploadedImages.push(imageData); 
+                        const previewDiv = document.createElement('div'); 
+                        previewDiv.className = 'preview-image'; 
+                        previewDiv.innerHTML = ` 
+                            <img src="${imageData}" alt="Preview"> 
+                            <button class="remove-image" onclick="removeImage(this)">×</button> 
+                        `; 
+                        previewContainer.appendChild(previewDiv); 
+                    }; 
+                    reader.readAsDataURL(file); 
+                } 
+            } 
+            event.target.value = ''; 
+        } 
 
-        function removeImage(button) {
-            const previewDiv = button.parentElement;
-            const img = previewDiv.querySelector('img');
-            const index = uploadedImages.indexOf(img.src);
-            if (index > -1) uploadedImages.splice(index, 1);
-            previewDiv.remove();
-        }
+        function removeImage(button) { 
+            const previewDiv = button.parentElement; 
+            const img = previewDiv.querySelector('img'); 
+            const index = uploadedImages.indexOf(img.src); 
+            if (index > -1) uploadedImages.splice(index, 1); 
+            previewDiv.remove(); 
+        } 
 
-        function typeText(element, text, speed = 20) {
-            return new Promise((resolve) => {
-                let index = 0;
-                element.innerHTML = '';
-                function type() {
-                    if (index < text.length && isGenerating) {
-                        element.innerHTML += text.charAt(index);
-                        index++;
-                        chatContainer.scrollTop = chatContainer.scrollHeight;
-                        setTimeout(type, speed);
-                    } else {
-                        resolve();
-                    }
-                }
-                type();
-            });
-        }
+        function typeText(element, text, speed = 20) { 
+            return new Promise((resolve) => { 
+                let index = 0; 
+                element.innerHTML = ''; 
+                function type() { 
+                    if (index < text.length) { 
+                        element.innerHTML += text.charAt(index); 
+                        index++; 
+                        chatContainer.scrollTop = chatContainer.scrollHeight; 
+                        setTimeout(type, speed); 
+                    } else { 
+                        resolve(); 
+                    } 
+                } 
+                type(); 
+            }); 
+        } 
 
-        function formatAIResponse(message, userQuestion) {
-            if (message.includes('Error:') || message.includes('failed') || message.includes('quota')) {
-                return message;
-            }
-            if (message.startsWith('IMAGE_GENERATED:')) {
-                return message;
-            }
-            const lowerQuestion = userQuestion.toLowerCase();
-            let cleanMessage = message.replace(/\*/g, '');
-            const simpleQuestions = [
-                'how are you', 'hello', 'hi', 'what can you do', 'who are you', 'thanks', 'thank you', 'ok', 'okay', 'good morning', 'good afternoon', 'good evening'
-            ];
-            if (simpleQuestions.some(q => lowerQuestion.includes(q))) {
-                return cleanMessage;
-            }
-            if (lowerQuestion.includes('what is') || lowerQuestion.includes('define') || lowerQuestion.includes('meaning of')) {
-                return `📚 Definition Overview\n\n${cleanMessage}`;
-            }
-            if (lowerQuestion.includes('explain') || lowerQuestion.includes('describe')) {
-                return `🔍 Detailed Explanation\n\n${cleanMessage}`;
-            }
-            if (lowerQuestion.includes(' vs ') || lowerQuestion.includes('difference between') || lowerQuestion.includes('compare')) {
-                return `⚖️ Comparison Analysis\n\n${cleanMessage}`;
-            }
-            if (lowerQuestion.includes('how to') || lowerQuestion.includes('steps') || lowerQuestion.includes('process')) {
-                return `🔄 Step-by-Step Guide\n\n${cleanMessage}`;
-            }
-            if (lowerQuestion.includes('list') || lowerQuestion.includes('examples') || lowerQuestion.includes('types of')) {
-                return `📋 Itemized List\n\n${cleanMessage}`;
-            }
-            if (cleanMessage.length > 150) {
-                return `📝 Comprehensive Answer\n\n${cleanMessage}`;
-            }
-            return cleanMessage;
-        }
+        function formatAIResponse(message, userQuestion) { 
+            if (message.includes('Error:') || message.includes('failed') || message.includes('quota')) { 
+                return message; 
+            } 
+            if (message.startsWith('IMAGE_GENERATED:')) { 
+                return message; 
+            } 
+            const lowerQuestion = userQuestion.toLowerCase(); 
+            let cleanMessage = message.replace(/\*/g, ''); 
+            const simpleQuestions = [ 
+                'how are you', 'hello', 'hi', 'what can you do', 'who are you', 'thanks', 'thank you', 'ok', 'okay', 'good morning', 'good afternoon', 'good evening' 
+            ]; 
+            if (simpleQuestions.some(q => lowerQuestion.includes(q))) { 
+                return cleanMessage; 
+            } 
+            if (lowerQuestion.includes('what is') || lowerQuestion.includes('define') || lowerQuestion.includes('meaning of')) { 
+                return `📚 Definition Overview\n\n${cleanMessage}`; 
+            } 
+            if (lowerQuestion.includes('explain') || lowerQuestion.includes('describe')) { 
+                return `🔍 Detailed Explanation\n\n${cleanMessage}`; 
+            } 
+            if (lowerQuestion.includes(' vs ') || lowerQuestion.includes('difference between') || lowerQuestion.includes('compare')) { 
+                return `⚖️ Comparison Analysis\n\n${cleanMessage}`; 
+            } 
+            if (lowerQuestion.includes('how to') || lowerQuestion.includes('steps') || lowerQuestion.includes('process')) { 
+                return `🔄 Step-by-Step Guide\n\n${cleanMessage}`; 
+            } 
+            if (lowerQuestion.includes('list') || lowerQuestion.includes('examples') || lowerQuestion.includes('types of')) { 
+                return `📋 Itemized List\n\n${cleanMessage}`; 
+            } 
+            if (cleanMessage.length > 150) { 
+                return `📝 Comprehensive Answer\n\n${cleanMessage}`; 
+            } 
+            return cleanMessage; 
+        } 
 
-        async function addMessage(message, isUser = false, images = [], useTyping = false) {
-            const chatContainer = document.getElementById('chatContainer');
-            const messageDiv = document.createElement('div');
-            messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`;
-            const bubbleDiv = document.createElement('div');
-            bubbleDiv.className = 'message-bubble';
-            messageDiv.appendChild(bubbleDiv);
-            chatContainer.appendChild(messageDiv);
+        async function addMessage(message, isUser = false, images = [], useTyping = false) { 
+            const chatContainer = document.getElementById('chatContainer'); 
+            const messageDiv = document.createElement('div'); 
+            messageDiv.className = `message ${isUser ? 'user-message' : 'ai-message'}`; 
+            const bubbleDiv = document.createElement('div'); 
+            bubbleDiv.className = 'message-bubble'; 
+            messageDiv.appendChild(bubbleDiv); 
+            chatContainer.appendChild(messageDiv); 
+            if (isUser) { 
+                if (images.length > 0) { 
+                    images.forEach(img => { 
+                        const imgElement = document.createElement('img'); 
+                        imgElement.src = img; 
+                        imgElement.className = 'chat-image'; 
+                        bubbleDiv.appendChild(imgElement); 
+                    }); 
+                } 
+                if (message) { 
+                    const textElement = document.createElement('div'); 
+                    textElement.textContent = message; 
+                    bubbleDiv.appendChild(textElement); 
+                } 
+            } else { 
+                if (message.startsWith('IMAGE_GENERATED:')) { 
+                    const imageData = message.replace('IMAGE_GENERATED:', ''); 
+                    const imgElement = document.createElement('img'); 
+                    imgElement.src = imageData; 
+                    imgElement.className = 'chat-image'; 
+                    bubbleDiv.appendChild(imgElement); 
+                    const downloadBtn = document.createElement('button'); 
+                    downloadBtn.className = 'download-btn'; 
+                    downloadBtn.textContent = '📥 Download'; 
+                    downloadBtn.onclick = function() { 
+                        downloadImage(imageData); 
+                    }; 
+                    bubbleDiv.appendChild(downloadBtn); 
+                    const textElement = document.createElement('div'); 
+                    textElement.textContent = 'Here is your generated image!'; 
+                    bubbleDiv.appendChild(textElement); 
+                } else { 
+                    if (useTyping) { 
+                        await typeText(bubbleDiv, message, 15); 
+                    } else { 
+                        bubbleDiv.textContent = message; 
+                    } 
+                } 
+            } 
+            chatContainer.scrollTop = chatContainer.scrollHeight; 
+        } 
 
-            if (isUser) {
-                if (images.length > 0) {
-                    images.forEach(img => {
-                        const imgElement = document.createElement('img');
-                        imgElement.src = img;
-                        imgElement.className = 'chat-image';
-                        bubbleDiv.appendChild(imgElement);
-                    });
-                }
-                if (message) {
-                    const textElement = document.createElement('div');
-                    textElement.textContent = message;
-                    bubbleDiv.appendChild(textElement);
-                }
-            } else {
-                if (message.startsWith('IMAGE_GENERATED:')) {
-                    const imageData = message.replace('IMAGE_GENERATED:', '');
-                    const imgElement = document.createElement('img');
-                    imgElement.src = imageData;
-                    imgElement.className = 'chat-image';
-                    bubbleDiv.appendChild(imgElement);
-                    const downloadBtn = document.createElement('button');
-                    downloadBtn.className = 'download-btn';
-                    downloadBtn.textContent = '📥 Download';
-                    downloadBtn.onclick = function() {
-                        downloadImage(imageData);
-                    };
-                    bubbleDiv.appendChild(downloadBtn);
-                    const textElement = document.createElement('div');
-                    textElement.textContent = 'Here is your generated image!';
-                    bubbleDiv.appendChild(textElement);
-                } else {
-                    if (useTyping) {
-                        await typeText(bubbleDiv, message, 15);
-                    } else {
-                        bubbleDiv.textContent = message;
-                    }
-                }
-            }
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-        }
+        function downloadImage(imageData) { 
+            const link = document.createElement('a'); 
+            link.href = imageData; 
+            link.download = 'generated-image.jpg'; 
+            link.click(); 
+        } 
 
-        function downloadImage(imageData) {
-            const link = document.createElement('a');
-            link.href = imageData;
-            link.download = 'generated-image.jpg';
-            link.click();
-        }
-
-        async function sendMessage() {
-            // STOP PREVIOUS RESPONSE FIRST
-            stopCurrentGeneration();
-
-            const messageInput = document.getElementById('messageInput');
-            const message = messageInput.value.trim();
-            const sendButton = document.getElementById('sendButton');
-            const typingIndicator = document.getElementById('typingIndicator');
-            const chatContainer = document.getElementById('chatContainer');
-
-            if (!message && uploadedImages.length === 0) return;
-
-            messageInput.disabled = true;
-            sendButton.disabled = true;
-            isGenerating = true;
-
-            await addMessage(message, true, [...uploadedImages]);
-            messageInput.value = '';
-            const userImages = [...uploadedImages];
-            document.getElementById('imagePreview').innerHTML = '';
-            uploadedImages = [];
-
-            typingIndicator.style.display = 'block';
-            chatContainer.scrollTop = chatContainer.scrollHeight;
-
-            try {
-                abortController = new AbortController();
+        // ========== **শুধু এই function টা CHANGE হয়েছে** ==========
+        async function sendMessage() { 
+            const messageInput = document.getElementById('messageInput'); 
+            const message = messageInput.value.trim(); 
+            const sendButton = document.getElementById('sendButton'); 
+            const typingIndicator = document.getElementById('typingIndicator'); 
+            const chatContainer = document.getElementById('chatContainer'); 
+            
+            if (!message && uploadedImages.length === 0) return; 
+            
+            // **নতুন message এর আগে সব typing STOP করো**
+            typingIndicator.style.display = 'none'; 
+            
+            messageInput.disabled = true; 
+            sendButton.disabled = true; 
+            
+            await addMessage(message, true, [...uploadedImages]); 
+            messageInput.value = ''; 
+            const userImages = [...uploadedImages]; 
+            document.getElementById('imagePreview').innerHTML = ''; 
+            uploadedImages = []; 
+            
+            typingIndicator.style.display = 'block'; 
+            chatContainer.scrollTop = chatContainer.scrollHeight; 
+            
+            try { 
+                const response = await fetch('/api/chat', { 
+                    method: 'POST', 
+                    headers: { 'Content-Type': 'application/json' }, 
+                    body: JSON.stringify({ 
+                        message: message, 
+                        mode: currentMode, 
+                        images: currentMode === 'analyze' ? userImages : [] 
+                    }) 
+                }); 
                 
-                const response = await fetch('/api/chat', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        message: message,
-                        mode: currentMode,
-                        images: currentMode === 'analyze' ? userImages : []
-                    }),
-                    signal: abortController.signal
-                });
-
-                const data = await response.json();
-                typingIndicator.style.display = 'none';
-
-                if (data.success && isGenerating) {
-                    const formattedResponse = formatAIResponse(data.text, message);
-                    await addMessage(formattedResponse, false, [], true);
-                } else if (!isGenerating) {
-                    // Response was stopped by user
-                    console.log('Response stopped by user');
-                } else {
-                    await addMessage('Error: ' + data.text, false, [], true);
-                }
-            } catch (error) {
-                typingIndicator.style.display = 'none';
-                if (error.name !== 'AbortError' && isGenerating) {
-                    await addMessage('Connection error: ' + error.message, false, [], true);
-                }
-            } finally {
-                isGenerating = false;
-                messageInput.disabled = false;
-                sendButton.disabled = false;
-                messageInput.focus();
-            }
+                const data = await response.json(); 
+                typingIndicator.style.display = 'none'; 
+                
+                if (data.success) { 
+                    const formattedResponse = formatAIResponse(data.text, message); 
+                    await addMessage(formattedResponse, false, [], true); 
+                } else { 
+                    await addMessage('Error: ' + data.text, false, [], false); 
+                } 
+            } catch (error) { 
+                typingIndicator.style.display = 'none'; 
+                await addMessage('Connection error: ' + error.message, false, [], false); 
+            } 
+            
+            messageInput.disabled = false; 
+            sendButton.disabled = false; 
+            messageInput.focus(); 
         }
+        // =============================================================
 
-        document.getElementById('messageInput').addEventListener('keypress', function(e) {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                sendMessage();
-            }
-        });
+        document.getElementById('messageInput').addEventListener('keypress', function(e) { 
+            if (e.key === 'Enter' && !e.shiftKey) { 
+                e.preventDefault(); 
+                sendMessage(); 
+            } 
+        }); 
 
-        document.getElementById('messageInput').addEventListener('input', function() {
-            this.style.height = 'auto';
-            this.style.height = (this.scrollHeight) + 'px';
-        });
-    </script>
-</body>
+        document.getElementById('messageInput').addEventListener('input', function() { 
+            this.style.height = 'auto'; 
+            this.style.height = (this.scrollHeight) + 'px'; 
+        }); 
+    </script> 
+</body> 
 </html>
