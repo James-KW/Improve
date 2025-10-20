@@ -344,7 +344,7 @@
                 </div>
                 <textarea id="messageInput" placeholder="Type your message..." rows="1"></textarea>
             </div>
-            <button id="sendButton" onclick="handleSendStop()">Send</button>
+            <button id="sendButton" onclick="sendMessage()">Send</button>
         </div>
     </div>
 
@@ -391,6 +391,7 @@
         let uploadedImages = [];
         let isGenerating = false;
         let abortController = null;
+        let currentTypingPromise = null;
 
         // ========== AUTHOR INFO FUNCTIONS ==========
         function openAuthorInfo() {
@@ -409,30 +410,32 @@
         }
         // ==========================================
 
-        // ========== SEND/STOP FUNCTIONALITY ==========
-        function handleSendStop() {
+        // ========== STOP CURRENT RESPONSE ==========
+        function stopCurrentResponse() {
             if (isGenerating) {
-                stopGeneration();
-            } else {
-                sendMessage();
+                // Stop API request
+                if (abortController) {
+                    abortController.abort();
+                }
+                
+                // Stop typing animation
+                if (currentTypingPromise) {
+                    // We can't actually stop the Promise, but we can mark it as stopped
+                    console.log('Stopping current response...');
+                }
+                
+                // Hide typing indicator
+                const typingIndicator = document.getElementById('typingIndicator');
+                typingIndicator.style.display = 'none';
+                
+                // Reset state
+                isGenerating = false;
+                updateSendButton();
+                
+                console.log('Previous response stopped');
             }
         }
-
-        function stopGeneration() {
-            if (abortController) {
-                abortController.abort();
-            }
-            isGenerating = false;
-            updateSendButton();
-            
-            const typingIndicator = document.getElementById('typingIndicator');
-            typingIndicator.style.display = 'none';
-            
-            // Enable input immediately
-            const messageInput = document.getElementById('messageInput');
-            messageInput.disabled = false;
-            messageInput.focus();
-        }
+        // ===========================================
 
         function updateSendButton() {
             const sendButton = document.getElementById('sendButton');
@@ -444,7 +447,6 @@
                 sendButton.classList.remove('stop');
             }
         }
-        // ============================================
 
         // ========== তোমার সব ORIGINAL CODE ==========
         function setMode(mode) {
@@ -488,8 +490,9 @@
             return new Promise((resolve) => {
                 let index = 0;
                 element.innerHTML = '';
+                
                 function type() {
-                    if (index < text.length && !abortController.signal.aborted) {
+                    if (index < text.length && isGenerating) {
                         element.innerHTML += text.charAt(index);
                         index++;
                         chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -498,6 +501,7 @@
                         resolve();
                     }
                 }
+                
                 type();
             });
         }
@@ -580,7 +584,8 @@
                     bubbleDiv.appendChild(textElement);
                 } else {
                     if (useTyping) {
-                        await typeText(bubbleDiv, message, 15);
+                        currentTypingPromise = typeText(bubbleDiv, message, 15);
+                        await currentTypingPromise;
                     } else {
                         bubbleDiv.textContent = message;
                     }
@@ -603,6 +608,9 @@
             const chatContainer = document.getElementById('chatContainer');
 
             if (!message && uploadedImages.length === 0) return;
+
+            // STOP PREVIOUS RESPONSE IF GENERATING
+            stopCurrentResponse();
 
             messageInput.disabled = true;
             isGenerating = true;
@@ -636,15 +644,18 @@
                 const data = await response.json();
                 typingIndicator.style.display = 'none';
 
-                if (data.success) {
+                if (data.success && isGenerating) {
                     const formattedResponse = formatAIResponse(data.text, message);
                     await addMessage(formattedResponse, false, [], true);
+                } else if (!isGenerating) {
+                    // Response was stopped, don't add anything
+                    console.log('Response was stopped by user');
                 } else {
                     await addMessage('Error: ' + data.text, false, [], true);
                 }
             } catch (error) {
                 typingIndicator.style.display = 'none';
-                if (error.name !== 'AbortError') {
+                if (error.name !== 'AbortError' && isGenerating) {
                     await addMessage('Connection error: ' + error.message, false, [], true);
                 }
             } finally {
@@ -658,11 +669,7 @@
         document.getElementById('messageInput').addEventListener('keypress', function(e) {
             if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
-                if (isGenerating) {
-                    stopGeneration();
-                } else {
-                    sendMessage();
-                }
+                sendMessage();
             }
         });
 
