@@ -186,7 +186,6 @@
             cursor: pointer; 
             margin-top: 5px; 
         } 
-        /* Typing Indicator Styles */ 
         .typing-indicator { 
             display: none; 
             padding: 10px 15px; 
@@ -205,6 +204,86 @@
             0%, 100% { opacity: 1; } 
             50% { opacity: 0; } 
         } 
+
+        /* ========== AUTHOR INFO MODAL CSS ============ */
+        .modal {
+            display: none;
+            position: fixed;
+            z-index: 1000;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+        }
+        .modal-content {
+            background-color: rgba(0, 0, 0, 0.7);
+            margin: 5% auto;
+            padding: 30px;
+            border-radius: 20px;
+            width: 90%;
+            max-width: 500px;
+            text-align: center;
+            color: white;
+            position: relative;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+        }
+        .close {
+            color: #fff;
+            float: right;
+            font-size: 28px;
+            font-weight: bold;
+            cursor: pointer;
+        }
+        .close:hover { color: #fdbb2d; }
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, #fdbb2d, #b21f1f);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        .author-image {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            margin: 20px auto;
+            border: 5px solid #fdbb2d;
+            overflow: hidden;
+        }
+        .author-image img { width: 100%; height: 100%; object-fit: cover; }
+        .author-details h2 { font-size: 1.8rem; margin-bottom: 10px; }
+        .author-details p { margin-bottom: 5px; color: #ddd; }
+        .skills-container { display: flex; justify-content: space-between; margin: 20px 0; }
+        .skills-column { flex: 1; padding: 0 10px; }
+        .skills-column h3 { margin-bottom: 10px; font-size: 1.2rem; color: #fdbb2d; }
+        .skill-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+        .contact-option {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(to right, #fdbb2d, #b21f1f);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 1.1rem;
+            cursor: pointer;
+            margin-top: 15px;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        .contact-option:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        /* ============================================ */
     </style> 
 </head> 
 <body> 
@@ -212,7 +291,7 @@
         <div class="header"> 
             <button class="contact-info-btn" onclick="openAuthorInfo()">📞 Contact Author</button>
             <h1>🚀 James AI</h1>
-            <div style="width: 100px;"></div> <!-- Spacer for balance -->
+            <div style="width: 100px;"></div>
         </div> 
         <div class="chat-container" id="chatContainer"> 
             <div class="message ai-message"> 
@@ -222,7 +301,6 @@
             </div> 
         </div> 
 
-        <!-- Typing Indicator --> 
         <div class="typing-indicator" id="typingIndicator"> 
             James typing... <span class="typing-cursor"></span> 
         </div> 
@@ -245,15 +323,70 @@
         </div> 
     </div> 
 
+    <!-- ========== AUTHOR INFO MODAL ============ -->
+    <div id="authorModal" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeAuthorInfo()">&times;</span>
+            <div class="header">
+                <h1>JAMES AI</h1>
+                <p>Author Information</p>
+            </div>
+            
+            <div class="author-image">
+                <img src="https://raw.githubusercontent.com/James-KW/Improve/main/image/IMG-20251011-WA0045(2).jpg" alt="MR.JAMES">
+            </div>
+            
+            <div class="author-details">
+                <h2>MR.JAMES</h2>
+                <p>AI Developer & Enthusiast</p>
+                <p>📱 WhatsApp: +96598064347</p>
+                <p>📍 Location: Dhaka, Bangladesh</p>
+                <p>💻 GitHub: James404-cyber</p>
+                <p>📧 Email: jamesmr283@gmail.com</p>
+                
+                <div class="skills-container">
+                    <div class="skills-column">
+                        <h3>Specialization</h3>
+                        <div class="skill-item">Python</div>
+                        <div class="skill-item">Java</div>
+                        <div class="skill-item">HTML</div>
+                    </div>
+                    <div class="skills-column">
+                        <h3>Currently Learning</h3>
+                        <div class="skill-item">Machine Learning</div>
+                        <div class="skill-item">Reverse Engineering</div>
+                        <div class="skill-item">C++</div>
+                    </div>
+                </div>
+            </div>
+            
+            <button class="contact-option" onclick="window.open('https://wa.me/+96598064347', '_blank')">📞 Contact via WhatsApp</button>
+        </div>
+    </div>
+    <!-- ======================================== -->
+
     <script> 
         let currentMode = 'chat'; 
         let uploadedImages = []; 
 
-        // Contact Author Info Function
+        // ========== AUTHOR INFO FUNCTIONS ==========
         function openAuthorInfo() {
-            window.open('author-info.html', '_blank');
+            document.getElementById('authorModal').style.display = 'block';
         }
 
+        function closeAuthorInfo() {
+            document.getElementById('authorModal').style.display = 'none';
+        }
+
+        window.onclick = function(event) {
+            const modal = document.getElementById('authorModal');
+            if (event.target == modal) {
+                modal.style.display = 'none';
+            }
+        }
+        // ==========================================
+
+        // ========== তোমার সব ORIGINAL CODE ==========
         function setMode(mode) { 
             currentMode = mode; 
             document.querySelectorAll('.mode-btn').forEach(btn => btn.classList.remove('active')); 
@@ -291,7 +424,6 @@
             previewDiv.remove(); 
         } 
 
-        // Real-time typing function 
         function typeText(element, text, speed = 20) { 
             return new Promise((resolve) => { 
                 let index = 0; 
@@ -310,54 +442,42 @@
             }); 
         } 
 
-        // IMPROVED AI Response Formatting System 
         function formatAIResponse(message, userQuestion) { 
-            // যদি error message হয়, directly return করো 
             if (message.includes('Error:') || message.includes('failed') || message.includes('quota')) { 
                 return message; 
             } 
-            // যদি image data হয়, directly return করো 
             if (message.startsWith('IMAGE_GENERATED:')) { 
                 return message; 
             } 
             const lowerQuestion = userQuestion.toLowerCase(); 
-            // Remove all * stars from the message 
             let cleanMessage = message.replace(/\*/g, ''); 
-            // Simple questions - direct answer 
             const simpleQuestions = [ 
                 'how are you', 'hello', 'hi', 'what can you do', 'who are you', 'thanks', 'thank you', 'ok', 'okay', 'good morning', 'good afternoon', 'good evening' 
             ]; 
             if (simpleQuestions.some(q => lowerQuestion.includes(q))) { 
                 return cleanMessage; 
             } 
-            // DEFINITION QUESTIONS 
             if (lowerQuestion.includes('what is') || lowerQuestion.includes('define') || lowerQuestion.includes('meaning of')) { 
                 return `📚 Definition Overview\n\n${cleanMessage}`; 
             } 
-            // EXPLANATION QUESTIONS 
             if (lowerQuestion.includes('explain') || lowerQuestion.includes('describe')) { 
                 return `🔍 Detailed Explanation\n\n${cleanMessage}`; 
             } 
-            // COMPARISON QUESTIONS 
             if (lowerQuestion.includes(' vs ') || lowerQuestion.includes('difference between') || lowerQuestion.includes('compare')) { 
                 return `⚖️ Comparison Analysis\n\n${cleanMessage}`; 
             } 
-            // STEP-BY-STEP QUESTIONS 
             if (lowerQuestion.includes('how to') || lowerQuestion.includes('steps') || lowerQuestion.includes('process')) { 
                 return `🔄 Step-by-Step Guide\n\n${cleanMessage}`; 
             } 
-            // LIST QUESTIONS 
             if (lowerQuestion.includes('list') || lowerQuestion.includes('examples') || lowerQuestion.includes('types of')) { 
                 return `📋 Itemized List\n\n${cleanMessage}`; 
             } 
-            // Default formatting for long responses 
             if (cleanMessage.length > 150) { 
                 return `📝 Comprehensive Answer\n\n${cleanMessage}`; 
             } 
             return cleanMessage; 
         } 
 
-        // MODIFIED: addMessage function with typing effect 
         async function addMessage(message, isUser = false, images = [], useTyping = false) { 
             const chatContainer = document.getElementById('chatContainer'); 
             const messageDiv = document.createElement('div'); 
@@ -367,7 +487,6 @@
             messageDiv.appendChild(bubbleDiv); 
             chatContainer.appendChild(messageDiv); 
             if (isUser) { 
-                // User message - show immediately 
                 if (images.length > 0) { 
                     images.forEach(img => { 
                         const imgElement = document.createElement('img'); 
@@ -382,9 +501,7 @@
                     bubbleDiv.appendChild(textElement); 
                 } 
             } else { 
-                // AI message - use typing effect 
                 if (message.startsWith('IMAGE_GENERATED:')) { 
-                    // Handle generated images 
                     const imageData = message.replace('IMAGE_GENERATED:', ''); 
                     const imgElement = document.createElement('img'); 
                     imgElement.src = imageData; 
@@ -401,7 +518,6 @@
                     textElement.textContent = 'Here is your generated image!'; 
                     bubbleDiv.appendChild(textElement); 
                 } else { 
-                    // Text message - use typing effect 
                     if (useTyping) { 
                         await typeText(bubbleDiv, message, 15); 
                     } else { 
@@ -419,7 +535,6 @@
             link.click(); 
         } 
 
-        // MODIFIED: sendMessage function with AI formatting system 
         async function sendMessage() { 
             const messageInput = document.getElementById('messageInput'); 
             const message = messageInput.value.trim(); 
@@ -427,16 +542,13 @@
             const typingIndicator = document.getElementById('typingIndicator'); 
             const chatContainer = document.getElementById('chatContainer'); 
             if (!message && uploadedImages.length === 0) return; 
-            // Disable input while sending 
             messageInput.disabled = true; 
             sendButton.disabled = true; 
-            // Add user message 
             await addMessage(message, true, [...uploadedImages]); 
             messageInput.value = ''; 
             const userImages = [...uploadedImages]; 
             document.getElementById('imagePreview').innerHTML = ''; 
             uploadedImages = []; 
-            // Show typing indicator 
             typingIndicator.style.display = 'block'; 
             chatContainer.scrollTop = chatContainer.scrollHeight; 
             try { 
@@ -452,10 +564,8 @@
                     }) 
                 }); 
                 const data = await response.json(); 
-                // Hide typing indicator 
                 typingIndicator.style.display = 'none'; 
                 if (data.success) { 
-                    // Use AI formatting system 
                     const formattedResponse = formatAIResponse(data.text, message); 
                     await addMessage(formattedResponse, false, [], true); 
                 } else { 
@@ -465,13 +575,11 @@
                 typingIndicator.style.display = 'none'; 
                 await addMessage('Connection error: ' + error.message, false, [], true); 
             } 
-            // Re-enable input 
             messageInput.disabled = false; 
             sendButton.disabled = false; 
             messageInput.focus(); 
         } 
 
-        // Enter key support 
         document.getElementById('messageInput').addEventListener('keypress', function(e) { 
             if (e.key === 'Enter' && !e.shiftKey) { 
                 e.preventDefault(); 
@@ -479,7 +587,6 @@
             } 
         }); 
 
-        // Auto-resize textarea 
         document.getElementById('messageInput').addEventListener('input', function() { 
             this.style.height = 'auto'; 
             this.style.height = (this.scrollHeight) + 'px'; 
