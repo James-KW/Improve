@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Author Info - JAMES AI</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            color: white;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .container {
+            width: 100%;
+            max-width: 500px;
+            background-color: rgba(0, 0, 0, 0.7);
+            border-radius: 20px;
+            padding: 30px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+            text-align: center;
+        }
+        
+        .header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        
+        .header h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+            background: linear-gradient(to right, #fdbb2d, #b21f1f);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+        
+        .author-image {
+            width: 150px;
+            height: 150px;
+            border-radius: 50%;
+            margin: 0 auto 20px;
+            border: 5px solid #fdbb2d;
+            overflow: hidden;
+        }
+        
+        .author-image img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+        
+        .author-details {
+            margin-bottom: 25px;
+        }
+        
+        .author-details h2 {
+            margin-bottom: 10px;
+            font-size: 1.8rem;
+        }
+        
+        .author-details p {
+            margin-bottom: 5px;
+            color: #ddd;
+        }
+        
+        .skills-container {
+            display: flex;
+            justify-content: space-between;
+            margin: 20px 0;
+        }
+        
+        .skills-column {
+            flex: 1;
+            padding: 0 10px;
+        }
+        
+        .skills-column h3 {
+            margin-bottom: 10px;
+            font-size: 1.2rem;
+            color: #fdbb2d;
+        }
+        
+        .skill-item {
+            background: rgba(255, 255, 255, 0.1);
+            padding: 8px;
+            margin: 5px 0;
+            border-radius: 5px;
+            font-size: 0.9rem;
+        }
+        
+        .contact-option {
+            display: block;
+            width: 100%;
+            padding: 15px;
+            background: linear-gradient(to right, #fdbb2d, #b21f1f);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            font-size: 1.1rem;
+            cursor: pointer;
+            margin-top: 15px;
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+        
+        .contact-option:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+        }
+        
+        .back-btn {
+            display: inline-block;
+            padding: 10px 20px;
+            background: rgba(255, 255, 255, 0.1);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            text-decoration: none;
+            margin-top: 15px;
+            transition: all 0.3s;
+        }
+        
+        .back-btn:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>JAMES AI</h1>
+            <p>Author Information</p>
+        </div>
+        
+        <div class="author-image">
+            <!--  GitHub image er direct URL diye replace koro-->
+            <img src="https://raw.githubusercontent.com/James-KW/Improve/main/image/IMG-20251011-WA0045(2).jpg" alt="MR.JAMES">
+        </div>
+        
+        <div class="author-details">
+            <h2>MR.JAMES</h2>
+            <p>AI Developer & Enthusiast</p>
+            <p>📱 WhatsApp: +96598064347</p>
+            <p>📍 Location: Dhaka, Bangladesh</p>
+            <p>💻 GitHub: James404-cyber</p>
+            <p>📧 Email: jamesmr283@gmail.com</p>
+            
+            <div class="skills-container">
+                <div class="skills-column">
+                    <h3>Specialization</h3>
+                    <div class="skill-item">Python</div>
+                    <div class="skill-item">Java</div>
+                    <div class="skill-item">HTML</div>
+                </div>
+                <div class="skills-column">
+                    <h3>Currently Learning</h3>
+                    <div class="skill-item">Machine Learning</div>
+                    <div class="skill-item">Reverse Engineering</div>
+                    <div class="skill-item">C++</div>
+                </div>
+            </div>
+        </div>
+        
+        <a href="https://wa.me/+96598064347" class="contact-option" target="_blank">📞 Contact via WhatsApp</a>
+        
+        <!-- Back to JAMES AI Main Page -->
+        <a href="index.html" class="back-btn">← Back to JAMES AI</a>
+    </div>
+</body>
+</html>
