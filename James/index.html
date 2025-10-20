@@ -535,61 +535,52 @@
             link.click(); 
         } 
 
-        // ========== **শুধু এই function টা CHANGE হয়েছে** ==========
         async function sendMessage() { 
             const messageInput = document.getElementById('messageInput'); 
             const message = messageInput.value.trim(); 
             const sendButton = document.getElementById('sendButton'); 
             const typingIndicator = document.getElementById('typingIndicator'); 
             const chatContainer = document.getElementById('chatContainer'); 
-            
             if (!message && uploadedImages.length === 0) return; 
-            
-            // **নতুন message এর আগে সব typing STOP করো**
-            typingIndicator.style.display = 'none'; 
-            
             messageInput.disabled = true; 
             sendButton.disabled = true; 
-            
+            // Stop previous typing when new message starts
+            typingIndicator.style.display = 'none'; 
             await addMessage(message, true, [...uploadedImages]); 
             messageInput.value = ''; 
             const userImages = [...uploadedImages]; 
             document.getElementById('imagePreview').innerHTML = ''; 
             uploadedImages = []; 
-            
             typingIndicator.style.display = 'block'; 
             chatContainer.scrollTop = chatContainer.scrollHeight; 
-            
             try { 
                 const response = await fetch('/api/chat', { 
                     method: 'POST', 
-                    headers: { 'Content-Type': 'application/json' }, 
+                    headers: { 
+                        'Content-Type': 'application/json' 
+                    }, 
                     body: JSON.stringify({ 
                         message: message, 
                         mode: currentMode, 
                         images: currentMode === 'analyze' ? userImages : [] 
                     }) 
                 }); 
-                
                 const data = await response.json(); 
                 typingIndicator.style.display = 'none'; 
-                
                 if (data.success) { 
                     const formattedResponse = formatAIResponse(data.text, message); 
                     await addMessage(formattedResponse, false, [], true); 
                 } else { 
-                    await addMessage('Error: ' + data.text, false, [], false); 
+                    await addMessage('Error: ' + data.text, false, [], true); 
                 } 
             } catch (error) { 
                 typingIndicator.style.display = 'none'; 
-                await addMessage('Connection error: ' + error.message, false, [], false); 
+                await addMessage('Connection error: ' + error.message, false, [], true); 
             } 
-            
             messageInput.disabled = false; 
             sendButton.disabled = false; 
             messageInput.focus(); 
-        }
-        // =============================================================
+        } 
 
         document.getElementById('messageInput').addEventListener('keypress', function(e) { 
             if (e.key === 'Enter' && !e.shiftKey) { 
